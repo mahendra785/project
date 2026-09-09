@@ -1,0 +1,182 @@
+@import 'tailwindcss';
+@import 'tw-animate-css';
+
+@custom-variant dark (&:where(.dark, .dark *));
+
+/*
+ * PUMS design tokens.
+ *
+ * Restrained, high-density, instrument-panel palette: near-neutral surfaces so
+ * that the only saturated colour on screen carries meaning (risk band, shift
+ * band, uncertainty heat). Deliberately not a marketing palette — gradients and
+ * accent washes would compete with the data.
+ */
+:root {
+  --background: oklch(0.985 0.002 250);
+  --foreground: oklch(0.21 0.015 255);
+
+  --card: oklch(1 0 0);
+  --card-foreground: var(--foreground);
+  --popover: oklch(1 0 0);
+  --popover-foreground: var(--foreground);
+
+  --primary: oklch(0.45 0.11 250);
+  --primary-foreground: oklch(0.99 0.002 250);
+
+  --secondary: oklch(0.955 0.005 250);
+  --secondary-foreground: oklch(0.3 0.02 255);
+
+  --muted: oklch(0.96 0.004 250);
+  --muted-foreground: oklch(0.52 0.014 255);
+
+  --accent: oklch(0.94 0.012 245);
+  --accent-foreground: oklch(0.28 0.03 255);
+
+  --destructive: oklch(0.55 0.19 25);
+  --destructive-foreground: oklch(0.99 0.002 250);
+
+  --border: oklch(0.9 0.006 250);
+  --input: oklch(0.9 0.006 250);
+  --ring: oklch(0.55 0.09 250);
+
+  /* Semantic status colours — the only saturated hues in the system. */
+  --status-ok: oklch(0.58 0.11 155);
+  --status-info: oklch(0.55 0.12 245);
+  --status-warn: oklch(0.68 0.13 75);
+  --status-danger: oklch(0.55 0.19 25);
+
+  /* Uncertainty ramp, matched to the backend's PNG colour LUT. */
+  --unc-0: oklch(0.25 0.06 265);
+  --unc-1: oklch(0.5 0.11 240);
+  --unc-2: oklch(0.66 0.09 190);
+  --unc-3: oklch(0.79 0.13 85);
+  --unc-4: oklch(0.56 0.18 28);
+
+  --radius: 0.5rem;
+}
+
+.dark {
+  --background: oklch(0.17 0.012 258);
+  --foreground: oklch(0.93 0.005 250);
+
+  --card: oklch(0.21 0.014 258);
+  --card-foreground: var(--foreground);
+  --popover: oklch(0.21 0.014 258);
+  --popover-foreground: var(--foreground);
+
+  --primary: oklch(0.7 0.11 245);
+  --primary-foreground: oklch(0.17 0.012 258);
+
+  --secondary: oklch(0.26 0.014 258);
+  --secondary-foreground: oklch(0.9 0.006 250);
+
+  --muted: oklch(0.25 0.012 258);
+  --muted-foreground: oklch(0.66 0.012 252);
+
+  --accent: oklch(0.29 0.02 252);
+  --accent-foreground: oklch(0.93 0.005 250);
+
+  --destructive: oklch(0.62 0.18 25);
+  --destructive-foreground: oklch(0.98 0.002 250);
+
+  --border: oklch(0.3 0.014 258);
+  --input: oklch(0.3 0.014 258);
+  --ring: oklch(0.6 0.1 245);
+
+  --status-ok: oklch(0.68 0.12 155);
+  --status-info: oklch(0.68 0.12 245);
+  --status-warn: oklch(0.76 0.13 78);
+  --status-danger: oklch(0.65 0.18 25);
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+
+  --color-status-ok: var(--status-ok);
+  --color-status-info: var(--status-info);
+  --color-status-warn: var(--status-warn);
+  --color-status-danger: var(--status-danger);
+
+  --color-unc-0: var(--unc-0);
+  --color-unc-1: var(--unc-1);
+  --color-unc-2: var(--unc-2);
+  --color-unc-3: var(--unc-3);
+  --color-unc-4: var(--unc-4);
+
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+
+  --font-sans: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
+  --font-mono: var(--font-mono-stack), ui-monospace, 'SFMono-Regular', monospace;
+}
+
+@layer base {
+  * {
+    border-color: var(--border);
+  }
+  body {
+    background-color: var(--background);
+    color: var(--foreground);
+    font-feature-settings: 'cv02', 'cv03', 'cv04', 'tnum';
+    -webkit-font-smoothing: antialiased;
+  }
+  /* Numeric columns must align; tabular figures everywhere data is shown. */
+  .tabular {
+    font-variant-numeric: tabular-nums;
+  }
+}
+
+@layer utilities {
+  .uncertainty-ramp {
+    background: linear-gradient(
+      to right,
+      var(--unc-0),
+      var(--unc-1),
+      var(--unc-2),
+      var(--unc-3),
+      var(--unc-4)
+    );
+  }
+  /* Faint grid used behind the image viewer so transparency is legible. */
+  .checkerboard {
+    background-image:
+      linear-gradient(45deg, var(--muted) 25%, transparent 25%),
+      linear-gradient(-45deg, var(--muted) 25%, transparent 25%),
+      linear-gradient(45deg, transparent 75%, var(--muted) 75%),
+      linear-gradient(-45deg, transparent 75%, var(--muted) 75%);
+    background-size: 16px 16px;
+    background-position: 0 0, 0 8px, 8px -8px, -8px 0;
+  }
+}
+
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+::-webkit-scrollbar-thumb {
+  background: var(--border);
+  border-radius: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}

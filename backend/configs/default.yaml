@@ -1,0 +1,93 @@
+# PUMS reference configuration.
+#
+# This file DOCUMENTS the defaults compiled into `app/core/config.py`; it is not
+# read at runtime (settings come from environment variables / backend/.env, so
+# there is exactly one loading mechanism rather than two that can disagree).
+#
+# It exists so every research-relevant constant can be reviewed in one place
+# alongside the reason it has the value it does.
+
+application:
+  name: PUMS — Perception Uncertainty Management System
+  version: 0.4.0
+
+inference:
+  default_model_id: intensity-mixture-seg-v1
+  # Square working resolution. Every mask, box and uncertainty map is expressed
+  # in these coordinates, so the client never has to rescale.
+  inference_size: 256
+  random_seed: 1337
+
+uncertainty:
+  estimator: normalised_predictive_entropy
+  # Entropy divided by log(C) so maps are comparable across models with
+  # different class counts — required for a model-agnostic framework.
+  normalisation: log_num_classes
+  high_uncertainty_threshold: 0.55
+  min_region_area: 24
+  max_reported_regions: 12
+
+calibration:
+  default_method: conformal_risk_control
+  default_target_risk: 0.10
+  ece_bins: 15
+  calibration_set_size: 200
+  loss: false_negative_rate
+  # B in the CRC finite-sample correction (n*R + B) / (n + 1). FNR is a rate.
+  loss_bound: 1.0
+  lambda_grid_size: 200
+  source: synthetic_phantom_v1
+
+distribution_shift:
+  detector: composite_intensity_shift_v1
+  indicator_weights:
+    wasserstein: 0.35
+    jensen_shannon: 0.30
+    moments: 0.20
+    texture: 0.15
+  normalisation_scales:
+    wasserstein: 0.25
+    moments: 3.0
+    texture: 0.04
+  # Derived by scripts/calibrate_shift_thresholds.py against the synthetic
+  # reference domain. Operating points, not experimental findings.
+  thresholds:
+    mild: 0.42
+    moderate: 0.50
+    severe: 0.78
+  reference_domain: synthetic_reference_v1
+
+risk:
+  # Weights sum to 1.0; the composite score is exactly their weighted sum, and
+  # every term is reported as an itemised RiskFactor in the API response.
+  weights:
+    uncertainty: 0.40
+    confidence: 0.25
+    distribution_shift: 0.20
+    calibration: 0.15
+  thresholds:
+    low: 0.25
+    moderate: 0.50
+    high: 0.72
+  # Conditions that force REVIEW_REQUIRED regardless of the weighted score.
+  overrides:
+    high_uncertainty_area: 0.35
+    region_peak_uncertainty: 0.85
+    severe_distribution_shift: true
+
+model_adapters:
+  intensity-mixture-seg-v1:
+    n_classes: 4
+    mrf_beta: 0.35
+    mrf_iterations: 1
+    # T > 1 softens the near-binary posteriors a well-separated mixture
+    # produces; without it, entropy is ~0 almost everywhere and every conformal
+    # threshold behaves identically.
+    responsibility_temperature: 4.0
+    fit_sample_size: 8000
+  region-proposal-det-v1:
+    min_area: 60
+    max_proposals: 20
+  deeplabv3-resnet50-voc:
+    requires: [torch, torchvision]
+    is_medical: false

@@ -1,0 +1,15 @@
+# PUMS backend — OPTIONAL deep-learning dependencies.
+#
+# The core system runs WITHOUT these. Installing them additionally enables:
+#   * the `deeplabv3-resnet50-voc` adapter (torchvision, natural-image baseline)
+#   * MONAI-based intensity transforms in the preprocessing pipeline
+#
+# CPU-only install (recommended for development):
+#   pip install -r requirements-torch.txt --index-url https://download.pytorch.org/whl/cpu
+#
+# Every import of these packages in the codebase is guarded; absence degrades
+# gracefully and is reported through GET /api/models.
+
+torch>=2.4
+torchvision>=0.19
+monai>=1.3

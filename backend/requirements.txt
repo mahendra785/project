@@ -1,0 +1,26 @@
+# PUMS backend — core runtime dependencies
+# Python 3.11+ (developed/tested on 3.13)
+
+# --- API layer ---
+fastapi==0.115.6
+uvicorn[standard]==0.34.0
+pydantic==2.10.5
+pydantic-settings==2.7.1
+python-multipart==0.0.20
+
+# --- Numerics / classical ML ---
+numpy>=1.26,<3
+scipy>=1.11
+scikit-learn>=1.4
+scikit-image>=0.22
+
+# --- Imaging ---
+Pillow>=10.2
+opencv-python-headless>=4.9
+
+# --- Medical imaging I/O (extensibility) ---
+pydicom>=2.4
+
+# --- Testing ---
+pytest>=8.0
+httpx>=0.27

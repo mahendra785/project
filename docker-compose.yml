@@ -1,0 +1,60 @@
+# PUMS — full stack for local development.
+#
+# Docker is a convenience, NOT a requirement: see README for the plain
+# venv + npm workflow, which is the primary supported path.
+#
+#   docker compose up --build
+#   frontend -> http://localhost:3000
+#   backend  -> http://localhost:8000/docs
+
+services:
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: pums-backend
+    ports:
+      - '8000:8000'
+    environment:
+      PUMS_ENVIRONMENT: docker
+      PUMS_LOG_LEVEL: INFO
+      PUMS_STORAGE_BACKEND: json
+      PUMS_CORS_ORIGINS: '["http://localhost:3000","http://127.0.0.1:3000"]'
+    volumes:
+      # Persist analyses across container restarts.
+      - pums-analyses:/app/var
+      - ./data:/data:ro
+    healthcheck:
+      # The image is dependency-light, so probe with Python rather than adding curl.
+      test:
+        [
+          'CMD',
+          'python',
+          '-c',
+          "import urllib.request,sys; sys.exit(0 if urllib.request.urlopen('http://127.0.0.1:8000/health', timeout=3).status == 200 else 1)",
+        ]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      # The first health check must not fail while the calibration warmup runs.
+      start_period: 60s
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+      args:
+        # Baked in at build time: Next.js inlines NEXT_PUBLIC_* into the bundle.
+        # It must be the URL the *browser* uses, not the internal service name.
+        NEXT_PUBLIC_API_URL: http://localhost:8000
+    container_name: pums-frontend
+    ports:
+      - '3000:3000'
+    environment:
+      NODE_ENV: production
+    depends_on:
+      backend:
+        condition: service_healthy
+
+volumes:
+  pums-analyses:
