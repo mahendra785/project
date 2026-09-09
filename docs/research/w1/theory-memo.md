@@ -194,9 +194,13 @@ Nothing in this table was changed after the gap numbers were seen.
   where small lesions appear alone. Affects the hippocampus smoke test and Task08
   later; does **not** affect Kvasir (natively 2-D). Must be replaced before any 3-D
   lesion experiment.
-- **Global 256² resize** erases thin structures. A 4-px fracture in a 2000-px
-  radiograph does not survive. FracAtlas is audit-only this week; W3 retrains at
-  ≥512.
+- **Global 256² resize** erases thin structures *in principle*. In practice the
+  FracAtlas audit (kill-report §3) showed 74% of its images are 373×454 and the
+  polygons are blob-like, so the median annotation is 142 px at 256² and none
+  fall below the speckle floor. The constraint is real for genuinely thin,
+  high-resolution masks; it is not the reason FracAtlas was audit-only this
+  week (that was the pre-declared rule). A per-dataset working size (384–512)
+  remains the right fix and is W3.
 - **Components are labelled post-resize.** Bilinear + 0.5 threshold can erase or
   merge small components. Acceptable for polyps (measured: 1206 native components
   → 1064 at 256², the loss being speckle); fatal for fractures.

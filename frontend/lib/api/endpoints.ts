@@ -10,6 +10,8 @@ import * as s from './schemas';
 import type {
   AnalysisListResponse,
   DatasetsResponse,
+  ResearchSummary,
+  SamplesResponse,
   AnalysisOptions,
   AnalysisResponse,
   CalibrationMethodsResponse,
@@ -148,6 +150,25 @@ export const api = {
   async datasets(): Promise<DatasetsResponse> {
     const data = await request<unknown>('/api/datasets');
     return parse(s.datasetsSchema, data, '/api/datasets') as unknown as DatasetsResponse;
+  },
+
+  async samples(): Promise<SamplesResponse> {
+    const data = await request<unknown>('/api/samples');
+    return parse(s.samplesSchema, data, '/api/samples') as SamplesResponse;
+  },
+
+  /** Run the full pipeline on a bundled sample, server-side (no upload). */
+  async analyzeSample(filename: string): Promise<AnalysisResponse> {
+    const data = await request<unknown>(`/api/samples/${encodeURIComponent(filename)}/analyze`, {
+      method: 'POST',
+      timeoutMs: ANALYSIS_TIMEOUT_MS,
+    });
+    return parse(s.analysisSchema, data, '/api/samples/{f}/analyze') as unknown as AnalysisResponse;
+  },
+
+  async researchSummary(): Promise<ResearchSummary> {
+    const data = await request<unknown>('/api/research/summary', { timeoutMs: 60_000 });
+    return parse(s.researchSummarySchema, data, '/api/research/summary') as unknown as ResearchSummary;
   },
 
   async selfTest(): Promise<SelfTestResponse> {

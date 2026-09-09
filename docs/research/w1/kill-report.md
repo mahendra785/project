@@ -83,13 +83,60 @@ several lesions of unequal size per unit — is essentially absent.
 (label 2) **touch in every slice**, so merged foreground is a single component;
 K = 2 arises only where a sliver detaches. Not a lesion task.
 
-### FracAtlas
+### FracAtlas — audit only (gap test deliberately not run)
 
 Download resolved via the figshare API (article 22363012 v7: `FracAtlas.zip`,
 338 MB, CC BY 4.0 — my registry entry had a wrong file id and size; fixed).
-Audit and contact sheet: **pending download completion** — see addendum below
-when present. Not run through the gap test: 256² erases a 4-px fracture. W3
-work at ≥512.
+Segmentation ships as **COCO polygons** (`Annotations/COCO JSON/COCO_fracture_masks.json`),
+not PNG masks; PASCAL VOC / YOLO files are boxes. The repo loader cannot read this
+yet (W3).
+
+| | native resolution |
+|---|---|
+| fractured images with ≥ 1 polygon | 719 |
+| polygon annotations | 924 |
+| **multi-lesion fraction (K ≥ 2)** | **0.238** — K dist {1: 548, 2: 146, 3: 17, 4: 7, 5: 1} |
+| mean K | 1.29 |
+| **components < 1% of image area** | **0.939** (< 0.1%: 0.081) |
+| area fraction p5 / p50 / p95 | 0.0008 / 0.0026 / 0.0112 |
+| size p5 / p50 / p95 (px) | 154 / 509 / 25 474 |
+| bbox fill ratio, median | 0.61 (blob-like, not thin lines) |
+| image resolutions | **373×454: 531 (74%)** · 2304×2880: 90 · 454×373: 83 · others: 15 |
+| equivalent size at 256² working res, p5 / p50 / p95 | 45 / 142 / 603 px — **0.0% below 10 px** |
+| split files | `Utilities/Fracture Split/{train,valid,test}.csv`; `dataset.csv` has a `multiscan` flag but **no patient id** |
+
+Contact sheet: `docs/research/w1/fracatlas_contact_sheet.jpg` (50 random
+fractured images, polygon in red, K per tile). Eyeballed: **coarse region
+polygons around the fracture site, 4–8 vertices, not tight fracture-line
+masks.** Several visible K = 2 tiles. Heavy letterboxing and scanner markers.
+
+**Two corrections to what I said before the audit:**
+
+1. *"256² erases a 4-px fracture."* Wrong for this dataset. 74% of images are
+   373×454, and the polygons are blobs, so the median annotation is 142 px at
+   256² and none fall below the m = 10 speckle floor. The resolution constraint
+   is much weaker than I claimed. A per-dataset working size is still right —
+   384–512 is sensible and cheap — but 256 would not have destroyed the labels.
+2. *"744 MB, file 41725323."* Both wrong; corrected in the registry.
+
+**K3 verdict for FracAtlas: PASS on the criteria that matter.** 23.8%
+multi-lesion (just under the 25% bar, comfortably above Kvasir's 4.9%), 94% of
+components in the small-lesion tail, 719 units → ~215 in a 30% calibration
+split, of which ~50 would be multi-lesion. That last number is **below the
+n ≥ 100 subpopulation bar** set in §7; Task08 remains necessary for a decisive
+result, but FracAtlas is a far better second dataset than Kvasir.
+
+**Caveats carried into W3:**
+- "Lesion" here means *annotated fracture region*. Pixel FNR against a coarse
+  polygon is not fracture-line recall; the paper must say which it measures.
+- No patient id. `multiscan` marks images from the same study, so
+  exchangeability is again approximate; group by the `multiscan` flag where
+  possible.
+- The RF pixel model sees mostly normal bone inside each polygon. Expect a weak
+  segmenter, a high dilation-infeasibility floor (§1 of the memo), and possibly
+  a *large* gap — which would be the hypothesis's regime, but must not be
+  confused with "the model is bad".
+- Loader work needed: COCO polygon → mask, `Fractured/` subfolder, split CSVs.
 
 ## 4. Hippocampus smoke test — execution and interpretation
 

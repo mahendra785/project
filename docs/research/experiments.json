@@ -1,0 +1,77 @@
+{
+  "note": "Registry of research experiments surfaced on the dashboard. Numbers are read from the raw result files named in `results`; the verdict text here is the human decision record and must match the referenced report.",
+  "experiments": [
+    {
+      "id": "w1-gate-a-kvasir",
+      "week": 1,
+      "title": "Gate A kill test — does pixel-level CRC leave lesions unprotected?",
+      "dataset": "kvasir-seg",
+      "role": "pilot",
+      "results": "docs/research/w1/kill_kvasir-seg.json",
+      "report": "docs/research/w1/kill-report.md",
+      "memo": "docs/research/w1/theory-memo.md",
+      "pre_registered_statistic": "G = R_les(lambda_pix) / alpha on the full calibration split; KILL <= 1.1, INCONCLUSIVE (1.1, 1.5), PROCEED >= 1.5 with n_cal >= 100 and K3 passing",
+      "verdict_by_rule": "KILL",
+      "recommendation": "INCONCLUSIVE",
+      "recommendation_reason": "K3 fails (4.9% multi-lesion frames). On 95% single large lesions at tau=0.5 a population-average G<1 is guaranteed by construction, not by the hypothesis being false. Post-hoc stratification (not pre-registered) shows G|K>=2 of 1.3-3.1 on ~14 multi-polyp frames per seed and ~40% of small lesions missed — the hypothesis's direction where its precondition holds, on too few units to count.",
+      "next": "Move Gate A to W3 (FracAtlas at 512 px) and W6 (MSD Task08); pre-register G on the K>=2 subpopulation with n>=100.",
+      "protocol": {
+        "tau": 0.5,
+        "connectivity": "8-connectivity, 2-D",
+        "min_lesion_px": 10,
+        "prediction_set": "thresholding",
+        "alphas": [0.05, 0.10, 0.15],
+        "seeds": [1337, 2024, 7],
+        "empty_gt": "excluded"
+      }
+    },
+    {
+      "id": "w1-audit-fracatlas",
+      "week": 1,
+      "title": "FracAtlas K3 data audit (gap test deliberately not run)",
+      "dataset": "fracatlas",
+      "role": "audit",
+      "results": null,
+      "report": "docs/research/w1/kill-report.md",
+      "memo": "docs/research/w1/fracatlas_contact_sheet.jpg",
+      "pre_registered_statistic": "K3 only: multi-lesion fraction, small-lesion tail, n_cal, mask quality by eye",
+      "verdict_by_rule": "N/A",
+      "recommendation": "PROCEED to W3 gap test on this dataset",
+      "recommendation_reason": "719 fractured images, 924 polygons; K>=2 in 23.8% (vs 4.9% on Kvasir); 93.9% of components below 1% of image area. Masks are coarse region polygons, not fracture-line delineations. 74% of images are 373x454 so the 256 px resize does NOT erase them (median annotation 142 px at 256; 0% below 10 px) -- a correction to the pre-audit assumption. No patient id; `multiscan` flag only. ~50 multi-lesion units per calibration split: below the n>=100 subpopulation bar, so Task08 is still needed for a decisive result.",
+      "next": "W3: COCO-polygon loader, per-dataset working size (384-512), retrain RF on the train split, run the corrected pre-registration (G on the K>=2 subpopulation).",
+      "protocol": {
+        "tau": 0.5,
+        "connectivity": "8-connectivity, 2-D",
+        "min_lesion_px": "to be chosen from this dataset's histogram before its gap test",
+        "prediction_set": "thresholding",
+        "alphas": [0.05, 0.10, 0.15],
+        "seeds": [],
+        "empty_gt": "excluded"
+      }
+    },
+    {
+      "id": "w1-smoke-hippocampus",
+      "week": 1,
+      "title": "Hippocampus smoke test (execution check, not a lesion task)",
+      "dataset": "msd-hippocampus",
+      "role": "smoke",
+      "results": "docs/research/w1/kill_msd-hippocampus.json",
+      "report": "docs/research/w1/kill-report.md",
+      "memo": null,
+      "pre_registered_statistic": "same as w1-gate-a-kvasir",
+      "verdict_by_rule": "N/A",
+      "recommendation": "N/A",
+      "recommendation_reason": "Single structure: anterior and posterior touch in every slice, so merged foreground is one component. G = 0.11-0.26 is the correct output of tau=0.5 on one large structure, not a labelling error (verified against brute force, max diff 0.0).",
+      "next": "None — dataset cannot support a lesion-level experiment.",
+      "protocol": {
+        "tau": 0.5,
+        "connectivity": "8-connectivity, 2-D",
+        "min_lesion_px": 10,
+        "prediction_set": "thresholding",
+        "alphas": [0.05, 0.10, 0.15],
+        "seeds": [1337],
+        "empty_gt": "excluded"
+      }
+    }
+  ]
+}

@@ -521,3 +521,81 @@ export interface DatasetsResponse {
   active: ActiveDatasetInfo;
   datasets: DatasetInfo[];
 }
+
+/* -------------------------------------------------------------- samples -- */
+
+export interface SampleCase {
+  id: string;
+  image: string;
+  ground_truth: string | null;
+  shifted_variant: string | null;
+  dataset: string;
+  dataset_name: string;
+  modality: string;
+  target: string;
+  case_id: string;
+  split: string;
+  foreground_fraction: number;
+  licence: string;
+  analysis_ids: string[];
+  shifted_analysis_ids: string[];
+}
+
+export interface SamplesResponse {
+  note: string;
+  citation: string;
+  licence: string;
+  samples: SampleCase[];
+}
+
+/* ------------------------------------------------------------- research -- */
+
+export interface ExperimentRow {
+  alpha: number;
+  n_cal: number;
+  multi_lesion_fraction: number;
+  lambda_pix: number;
+  R_pix: number;
+  R_les_at_lambda_pix: number;
+  G: number;
+  G_sd: number | null;
+  R_les_test: number | null;
+  lambda_les: number;
+  lambda_union: number;
+  inflation_union: number;
+}
+
+export interface Experiment {
+  id: string;
+  week: number;
+  title: string;
+  dataset: string;
+  role: string;
+  verdict_by_rule: string;
+  recommendation: string;
+  recommendation_reason: string;
+  next: string;
+  pre_registered_statistic: string;
+  protocol: Record<string, unknown>;
+  report: string | null;
+  memo: string | null;
+  rows: ExperimentRow[];
+  seeds: number[];
+  m_justification: string | null;
+}
+
+export interface ResearchSummary {
+  dataset: ActiveDatasetInfo;
+  model: {
+    id: string;
+    name: string;
+    trained_on: string;
+    trained_dataset: string | null;
+    is_medical: boolean;
+    clinically_validated: boolean;
+    training_report: Record<string, unknown> | null;
+  };
+  method_status_counts: Record<string, number>;
+  experiments: Experiment[];
+  disclaimer: string;
+}

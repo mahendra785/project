@@ -24,6 +24,8 @@ import {
 import { PageContainer, PageHeader } from '@/components/layout/page-container';
 import { EmptyState, ErrorState, Skeleton } from '@/components/layout/states';
 import { DatasetBanner } from '@/components/research/dataset-banner';
+import { ResearchSummaryPanel } from '@/features/dashboard/research-summary';
+import { SampleCases } from '@/features/dashboard/sample-cases';
 import { MetricCard } from '@/components/research/metric-card';
 import {
   ResearchDisclaimer,
@@ -110,6 +112,8 @@ export default function DashboardPage() {
       />
 
       <DatasetBanner />
+
+      <SampleCases />
 
       {dashboard.isLoading ? (
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
@@ -371,6 +375,8 @@ export default function DashboardPage() {
           </Card>
         </>
       )}
+
+      <ResearchSummaryPanel />
 
       <ResearchDisclaimer text="PUMS is a B.Tech research prototype. It ships no clinically validated model and no medical benchmark results. Risk outputs describe model reliability, not patient condition." />
     </PageContainer>

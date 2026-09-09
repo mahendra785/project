@@ -461,3 +461,77 @@ export const datasetsSchema = z.object({
     }),
   ),
 });
+
+export const samplesSchema = z.object({
+  note: z.string(),
+  citation: z.string(),
+  licence: z.string(),
+  samples: z.array(
+    z.object({
+      id: z.string(),
+      image: z.string(),
+      ground_truth: z.string().nullable(),
+      shifted_variant: z.string().nullable(),
+      dataset: z.string(),
+      dataset_name: z.string(),
+      modality: z.string(),
+      target: z.string(),
+      case_id: z.string(),
+      split: z.string(),
+      foreground_fraction: z.number(),
+      licence: z.string(),
+      analysis_ids: z.array(z.string()),
+      shifted_analysis_ids: z.array(z.string()),
+    }),
+  ),
+});
+
+export const researchSummarySchema = z.object({
+  dataset: datasetsSchema.shape.active,
+  model: z.object({
+    id: z.string(),
+    name: z.string(),
+    trained_on: z.string(),
+    trained_dataset: z.string().nullable(),
+    is_medical: z.boolean(),
+    clinically_validated: z.boolean(),
+    training_report: z.record(z.unknown()).nullable(),
+  }),
+  method_status_counts: z.record(z.number()),
+  experiments: z.array(
+    z.object({
+      id: z.string(),
+      week: z.number(),
+      title: z.string(),
+      dataset: z.string(),
+      role: z.string(),
+      verdict_by_rule: z.string(),
+      recommendation: z.string(),
+      recommendation_reason: z.string(),
+      next: z.string(),
+      pre_registered_statistic: z.string(),
+      protocol: z.record(z.unknown()),
+      report: z.string().nullable(),
+      memo: z.string().nullable(),
+      rows: z.array(
+        z.object({
+          alpha: z.number(),
+          n_cal: z.number(),
+          multi_lesion_fraction: z.number(),
+          lambda_pix: z.number(),
+          R_pix: z.number(),
+          R_les_at_lambda_pix: z.number(),
+          G: z.number(),
+          G_sd: z.number().nullable(),
+          R_les_test: z.number().nullable(),
+          lambda_les: z.number(),
+          lambda_union: z.number(),
+          inflation_union: z.number(),
+        }),
+      ),
+      seeds: z.array(z.number()),
+      m_justification: z.string().nullable(),
+    }),
+  ),
+  disclaimer: z.string(),
+});

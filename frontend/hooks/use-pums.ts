@@ -22,6 +22,8 @@ export const queryKeys = {
   evaluation: (withCalibration: boolean) => ['evaluation', withCalibration] as const,
   selfTest: ['evaluation', 'self-test'] as const,
   datasets: ['datasets'] as const,
+  samples: ['samples'] as const,
+  research: ['research', 'summary'] as const,
 };
 
 /** Do not retry contract mismatches or 4xx — only transient failures. */
@@ -137,6 +139,41 @@ export function useDatasets() {
     queryFn: api.datasets,
     staleTime: 5 * 60_000,
     retry: retryPolicy,
+  });
+}
+
+export function useSamples() {
+  return useQuery({
+    queryKey: queryKeys.samples,
+    queryFn: api.samples,
+    staleTime: 30_000,
+    retry: retryPolicy,
+  });
+}
+
+export function useResearchSummary() {
+  return useQuery({
+    queryKey: queryKeys.research,
+    queryFn: api.researchSummary,
+    staleTime: 5 * 60_000,
+    retry: retryPolicy,
+  });
+}
+
+/** Run a bundled sample server-side; refreshes everything that lists analyses. */
+export function useRunSample() {
+  const queryClient = useQueryClient();
+  const setCurrent = useAnalysisStore((s) => s.setCurrent);
+  return useMutation<AnalysisResponse, ApiError, string>({
+    mutationFn: (filename) => api.analyzeSample(filename),
+    onSuccess: (analysis) => {
+      setCurrent(analysis);
+      queryClient.setQueryData(queryKeys.analysis(analysis.analysis_id), analysis);
+      queryClient.invalidateQueries({ queryKey: queryKeys.samples });
+      queryClient.invalidateQueries({ queryKey: queryKeys.dashboard });
+      queryClient.invalidateQueries({ queryKey: ['analyses'] });
+      queryClient.invalidateQueries({ queryKey: ['evaluation'] });
+    },
   });
 }
 
