@@ -1,7 +1,0 @@
-{
-  "permissions": {
-    "allow": [
-      "Bash(PUMS_STORAGE_BACKEND=memory ./.venv/Scripts/python.exe -c ' *)"
-    ]
-  }
-}
