@@ -178,6 +178,31 @@ DATASETS: dict[str, DatasetSpec] = {
             "test on CT, and the exchangeability assumption visibly breaks."
         ),
     ),
+    "msd-hepatic-vessel": DatasetSpec(
+        id="msd-hepatic-vessel",
+        name="MSD Task08 — Hepatic Vessels & Tumours (CT)",
+        modality=Modality.CT,
+        target="Liver tumours (label 2); hepatic vessels (label 1) ignored",
+        use_case=(
+            "Liver metastasis and HCC assessment — frequently MULTIPLE tumours "
+            "per liver, which makes this the one openly-licensed dataset in reach "
+            "where lesion-level and pixel-level risk genuinely diverge."
+        ),
+        fmt=DatasetFormat.MSD_NIFTI,
+        url="https://msd-for-monai.s3-us-west-2.amazonaws.com/Task08_HepaticVessel.tar",
+        approx_bytes=8_700_000_000,
+        licence=_MSD_LICENCE,
+        licence_url=_MSD_LICENCE_URL,
+        citation=_MSD_CITATION,
+        homepage=_MSD_HOME,
+        foreground_labels=[2],
+        notes=(
+            "303 training CT volumes. Foreground is the TUMOUR label only, so "
+            "connected components are lesions rather than vasculature. ~8.7 GB. "
+            "Requires a volume-level calibration unit (26-connectivity) — the "
+            "2-D slice sampler misrepresents lesion counts here."
+        ),
+    ),
     # ---------------------------------------------------------------- X-ray --
     "fracatlas": DatasetSpec(
         id="fracatlas",
@@ -190,10 +215,10 @@ DATASETS: dict[str, DatasetSpec] = {
             "clinical value."
         ),
         fmt=DatasetFormat.IMAGE_MASK_ZIP,
-        url=(
-            "https://figshare.com/ndownloader/files/41725323"
-        ),
-        approx_bytes=780_000_000,
+        # Resolved from the figshare article API (v7); the article-page
+        # "download" link returns 202/empty until figshare has staged the file.
+        url="https://ndownloader.figshare.com/files/65518038",
+        approx_bytes=338_400_000,
         licence="CC BY 4.0",
         licence_url="https://creativecommons.org/licenses/by/4.0/",
         citation=(
