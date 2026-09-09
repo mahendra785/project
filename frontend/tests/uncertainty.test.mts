@@ -79,6 +79,23 @@ test('decode round-trip error stays within the quantisation bound', () => {
   });
 });
 
+test('decodeGrayscale rejects degenerate dimensions', () => {
+  // Regression: ImageBitmap.close() detaches the bitmap, after which its width
+  // and height report 0. Reading them post-close produced a 0x0 matrix that
+  // surfaced far away as "createImageData: source width is zero".
+  const data = new Uint8ClampedArray([0, 0, 0, 255]);
+
+  assert.throws(() => decodeGrayscale(data, 0, 0), /Invalid uncertainty map dimensions/);
+  assert.throws(() => decodeGrayscale(data, 4, 0), /Invalid uncertainty map dimensions/);
+  assert.throws(() => decodeGrayscale(data, -2, 2), /Invalid uncertainty map dimensions/);
+  assert.throws(() => decodeGrayscale(data, 1.5, 2), /Invalid uncertainty map dimensions/);
+});
+
+test('decodeGrayscale rejects pixel data that is too short for the dimensions', () => {
+  const data = new Uint8ClampedArray(4 * 3); // only 3 pixels
+  assert.throws(() => decodeGrayscale(data, 4, 4), /too short/);
+});
+
 test('matrixHistogram bins every pixel exactly once', () => {
   const values = new Float32Array([0, 0.1, 0.25, 0.5, 0.75, 0.99, 1]);
   const counts = matrixHistogram(makeMatrix(values, 7, 1), 10);

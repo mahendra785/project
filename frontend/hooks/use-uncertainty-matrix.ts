@@ -36,17 +36,27 @@ async function decodeMatrix(url: string): Promise<UncertaintyMatrix> {
   const blob = await response.blob();
   const bitmap = await createImageBitmap(blob);
 
+  // Read the dimensions BEFORE closing. `ImageBitmap.close()` detaches the
+  // bitmap, after which `width` and `height` both report 0 — reading them
+  // afterwards yields a 0x0 matrix and a downstream IndexSizeError.
+  const { width, height } = bitmap;
+
   const canvas = document.createElement('canvas');
-  canvas.width = bitmap.width;
-  canvas.height = bitmap.height;
+  canvas.width = width;
+  canvas.height = height;
   const context = canvas.getContext('2d', { willReadFrequently: true });
-  if (!context) throw new Error('Canvas 2D context unavailable');
+  if (!context) {
+    bitmap.close();
+    throw new Error('Canvas 2D context unavailable');
+  }
 
-  context.drawImage(bitmap, 0, 0);
-  const { data } = context.getImageData(0, 0, bitmap.width, bitmap.height);
-  bitmap.close();
-
-  return decodeGrayscale(data, bitmap.width, bitmap.height);
+  try {
+    context.drawImage(bitmap, 0, 0);
+    const { data } = context.getImageData(0, 0, width, height);
+    return decodeGrayscale(data, width, height);
+  } finally {
+    bitmap.close();
+  }
 }
 
 export function useUncertaintyMatrix(url: string | null) {

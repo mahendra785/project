@@ -70,6 +70,23 @@ export function decodeGrayscale(
   width: number,
   height: number,
 ): UncertaintyMatrix {
+  // Fail loudly on a degenerate decode. A 0x0 matrix is not a valid map, and
+  // silently returning one pushes the failure into a canvas call several
+  // components away where the cause is unrecoverable from the stack trace.
+  if (!Number.isInteger(width) || !Number.isInteger(height) || width <= 0 || height <= 0) {
+    throw new Error(
+      `Invalid uncertainty map dimensions: ${width}x${height}. ` +
+        'The source image was empty or its dimensions were read after the ' +
+        'ImageBitmap had been closed.',
+    );
+  }
+  if (data.length < width * height * 4) {
+    throw new Error(
+      `Uncertainty map pixel data is too short: got ${data.length} bytes, ` +
+        `expected at least ${width * height * 4} for ${width}x${height} RGBA.`,
+    );
+  }
+
   const values = new Float32Array(width * height);
   for (let i = 0; i < values.length; i += 1) {
     values[i] = data[i * 4] / 255;

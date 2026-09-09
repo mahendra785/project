@@ -34,7 +34,9 @@ export function UncertaintyHeatmap({
 
   useEffect(() => {
     const canvas = canvasRef.current;
-    if (!canvas) return;
+    // `createImageData` throws IndexSizeError on a zero dimension, so guard
+    // rather than let a degenerate matrix crash the whole viewer.
+    if (!canvas || matrix.width <= 0 || matrix.height <= 0) return;
 
     canvas.width = matrix.width;
     canvas.height = matrix.height;
