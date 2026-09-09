@@ -116,17 +116,19 @@ export default function ModelsPage() {
                   {model.description}
                 </p>
 
-                {!model.is_medical && (
-                  <div className="flex items-start gap-2 rounded-md border border-status-warn/30 bg-status-warn/8 p-2.5">
-                    <AlertTriangle className="mt-0.5 size-3.5 shrink-0 text-status-warn" />
-                    <div className="space-y-0.5">
-                      <p className="text-[11px] font-medium">Not a validated medical model</p>
-                      <p className="text-[10px] leading-relaxed text-muted-foreground">
-                        Trained on: {model.trained_on}
-                      </p>
-                    </div>
+                <div className="flex items-start gap-2 rounded-md border border-status-warn/30 bg-status-warn/8 p-2.5">
+                  <AlertTriangle className="mt-0.5 size-3.5 shrink-0 text-status-warn" />
+                  <div className="space-y-0.5">
+                    <p className="text-[11px] font-medium">
+                      {model.is_medical
+                        ? 'Trained on medical data — but NOT clinically validated'
+                        : 'Not trained on medical data'}
+                    </p>
+                    <p className="text-[10px] leading-relaxed text-muted-foreground">
+                      Trained on: {model.trained_on}
+                    </p>
                   </div>
-                )}
+                </div>
 
                 {!model.available && model.unavailable_reason && (
                   <p className="rounded-md border border-border bg-muted/40 p-2 text-[10px] text-muted-foreground">
@@ -143,6 +145,8 @@ export default function ModelsPage() {
                       ['OOD detector', model.ood_detector],
                       ['Input channels', String(model.input_channels)],
                       ['Classes', String(model.class_labels.length)],
+                      ['Trained on medical data', model.is_medical ? 'Yes' : 'No'],
+                      ['Clinically validated', model.clinically_validated ? 'Yes' : 'No'],
                     ].map(([label, value]) => (
                       <tr key={label}>
                         <td className="py-1.5 text-muted-foreground">{label}</td>

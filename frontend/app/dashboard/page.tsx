@@ -6,6 +6,7 @@ import {
   AlertTriangle,
   BrainCircuit,
   Boxes,
+  Database,
   GaugeCircle,
   Radar,
   ScanSearch,
@@ -22,6 +23,7 @@ import {
 } from '@/components/charts/chart-primitives';
 import { PageContainer, PageHeader } from '@/components/layout/page-container';
 import { EmptyState, ErrorState, Skeleton } from '@/components/layout/states';
+import { DatasetBanner } from '@/components/research/dataset-banner';
 import { MetricCard } from '@/components/research/metric-card';
 import {
   ResearchDisclaimer,
@@ -31,7 +33,13 @@ import {
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { useAnalyses, useDashboard, useHealth, useModels } from '@/hooks/use-pums';
+import {
+  useAnalyses,
+  useDashboard,
+  useDatasets,
+  useHealth,
+  useModels,
+} from '@/hooks/use-pums';
 import { uncertaintyColour } from '@/hooks/use-uncertainty-matrix';
 import { num, pct, relativeTime } from '@/lib/utils';
 import type { RiskLevel, ShiftStatus } from '@/types/api';
@@ -72,6 +80,7 @@ export default function DashboardPage() {
   const analyses = useAnalyses(8);
   const models = useModels();
   const health = useHealth();
+  const datasets = useDatasets();
 
   if (dashboard.isError) {
     return (
@@ -99,6 +108,8 @@ export default function DashboardPage() {
           </Button>
         }
       />
+
+      <DatasetBanner />
 
       {dashboard.isLoading ? (
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
@@ -146,14 +157,24 @@ export default function DashboardPage() {
             />
           </section>
 
-          <section className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+          <section className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
             <MetricCard
               label="Calibration status"
               value={stats.mean_ece === null ? '—' : num(stats.mean_ece, 4)}
               icon={GaugeCircle}
-              provenance="synthetic"
-              hint="Expected Calibration Error measured on the synthetic phantom calibration set. Characterises phantom behaviour, not clinical performance."
-              footer="Mean ECE · conformal risk control"
+              // Provenance is read from the live calibration source, never
+              // assumed: the same ECE means something different on expert-
+              // annotated MRI than on procedural phantoms.
+              provenance={datasets.data?.active.provenance ?? 'synthetic'}
+              hint={
+                datasets.data?.active.summary ??
+                'Expected Calibration Error measured on the registered calibration set.'
+              }
+              footer={
+                datasets.data?.active.available
+                  ? `Mean ECE · ${datasets.data.active.dataset_name}`
+                  : 'Mean ECE · synthetic phantoms'
+              }
             />
             <MetricCard
               label="Active model"
@@ -164,6 +185,22 @@ export default function DashboardPage() {
               icon={Boxes}
               hint={stats.active_model_id}
               footer={stats.active_model_name}
+            />
+            <MetricCard
+              label="Calibration data"
+              value={
+                datasets.data?.active.available
+                  ? (datasets.data.active.dataset_id ?? '—')
+                  : 'phantoms'
+              }
+              icon={Database}
+              provenance={datasets.data?.active.provenance ?? 'synthetic'}
+              tone={datasets.data?.active.available ? 'ok' : 'warn'}
+              footer={
+                datasets.data?.active.available
+                  ? 'Real expert annotations'
+                  : 'No dataset downloaded'
+              }
             />
             <MetricCard
               label="Model adapters"

@@ -67,6 +67,8 @@ export const modelInfoSchema = z.object({
   ood_detector: z.string(),
   trained_on: z.string(),
   is_medical: z.boolean(),
+  clinically_validated: z.boolean(),
+  trained_dataset: z.string().nullable(),
   description: z.string(),
   parameters: z.record(z.unknown()),
   input_channels: z.number(),
@@ -429,4 +431,33 @@ export const selfTestSchema = z.object({
   ),
   all_passed: z.boolean(),
   note: z.string(),
+});
+
+export const datasetsSchema = z.object({
+  active: z.object({
+    dataset_id: z.string().nullable(),
+    dataset_name: z.string().nullable(),
+    available: z.boolean(),
+    provenance: provenanceSchema,
+    summary: z.string(),
+    download_command: z.string().nullable(),
+  }),
+  datasets: z.array(
+    z.object({
+      id: z.string(),
+      name: z.string(),
+      modality: z.string(),
+      target: z.string(),
+      use_case: z.string(),
+      licence: z.string(),
+      licence_url: z.string(),
+      citation: z.string(),
+      homepage: z.string(),
+      approx_mb: z.number(),
+      downloadable: z.boolean(),
+      requires_registration: z.boolean(),
+      available: z.boolean(),
+      notes: z.string(),
+    }),
+  ),
 });

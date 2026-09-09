@@ -17,6 +17,7 @@ import {
   YAxis,
 } from '@/components/charts/chart-primitives';
 import { PageContainer, PageHeader } from '@/components/layout/page-container';
+import { DatasetBanner } from '@/components/research/dataset-banner';
 import { ErrorState, LoadingState } from '@/components/layout/states';
 import { MetricCard } from '@/components/research/metric-card';
 import { ProvenanceBadge, StatusBadge } from '@/components/research/status-badges';
@@ -63,6 +64,8 @@ export default function EvaluationPage() {
           )
         }
       />
+
+      <DatasetBanner />
 
       {evaluation.isLoading && <LoadingState label="Computing evaluation metrics…" />}
       {evaluation.isError && (

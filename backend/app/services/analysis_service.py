@@ -29,7 +29,7 @@ from app.models.base import (
     DetectionOutput,
     SegmentationOutput,
 )
-from app.models.registry import ModelRegistry
+from app.models.registry import ModelRegistry, resolve_default_model_id
 from app.preprocessing.pipeline import PreprocessedImage, PreprocessingPipeline
 from app.risk.engine import RiskAssessmentService, RiskInputs
 from app.schemas.analysis import (
@@ -93,7 +93,9 @@ class AnalysisService:
             data, content_type=content_type, filename=filename
         )
 
-        model_id = options.model_id or self.settings.default_model_id
+        model_id = options.model_id or resolve_default_model_id(
+            self.settings.default_model_id, self.settings.fallback_model_id
+        )
         model = self.registry.get_available(model_id)
 
         # The requested task must be one the adapter declares. Without this the

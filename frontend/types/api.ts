@@ -68,7 +68,12 @@ export interface ModelInfo {
   ood_detector: string;
   /** What the weights were actually trained on. Never omit in the UI. */
   trained_on: string;
+  /** Whether the weights were fitted on real medical imaging data. */
   is_medical: boolean;
+  /** Always false. Trained-on-medical-data is NOT validated-for-clinical-use. */
+  clinically_validated: boolean;
+  /** Dataset id the adapter was trained on, when it is a trained model. */
+  trained_dataset: string | null;
   description: string;
   parameters: Record<string, unknown>;
   input_channels: number;
@@ -480,4 +485,39 @@ export interface ApiErrorBody {
   code: string;
   message: string;
   detail: Record<string, unknown>;
+}
+
+/* ------------------------------------------------------------- datasets -- */
+
+export interface DatasetInfo {
+  id: string;
+  name: string;
+  modality: string;
+  target: string;
+  use_case: string;
+  licence: string;
+  licence_url: string;
+  citation: string;
+  homepage: string;
+  approx_mb: number;
+  downloadable: boolean;
+  requires_registration: boolean;
+  /** Downloaded and extracted on the backend machine. */
+  available: boolean;
+  notes: string;
+}
+
+/** What is actually backing calibration and the reference domain right now. */
+export interface ActiveDatasetInfo {
+  dataset_id: string | null;
+  dataset_name: string | null;
+  available: boolean;
+  provenance: DataProvenance;
+  summary: string;
+  download_command: string | null;
+}
+
+export interface DatasetsResponse {
+  active: ActiveDatasetInfo;
+  datasets: DatasetInfo[];
 }

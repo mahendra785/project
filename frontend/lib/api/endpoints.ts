@@ -9,6 +9,7 @@ import { ANALYSIS_TIMEOUT_MS, ApiError, request } from './client';
 import * as s from './schemas';
 import type {
   AnalysisListResponse,
+  DatasetsResponse,
   AnalysisOptions,
   AnalysisResponse,
   CalibrationMethodsResponse,
@@ -142,6 +143,11 @@ export const api = {
       { timeoutMs: ANALYSIS_TIMEOUT_MS },
     );
     return parse(s.evaluationSchema, data, '/api/evaluation') as unknown as EvaluationReport;
+  },
+
+  async datasets(): Promise<DatasetsResponse> {
+    const data = await request<unknown>('/api/datasets');
+    return parse(s.datasetsSchema, data, '/api/datasets') as unknown as DatasetsResponse;
   },
 
   async selfTest(): Promise<SelfTestResponse> {

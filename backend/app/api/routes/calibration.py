@@ -6,6 +6,7 @@ from fastapi import APIRouter, Query
 
 from app.api.dependencies import RegistryDep, SettingsDep
 from app.calibration.datasets import get_calibration_set
+from app.models.registry import resolve_default_model_id
 from app.calibration.registry import get_method, list_methods
 from app.core.errors import PumsError
 from app.schemas.calibration import CalibrationMethodInfo, CalibrationResult
@@ -50,7 +51,7 @@ def run_calibration(
     This powers the calibration dashboard's "recalibrate" control and lets the
     effect of alpha on lambda_hat be explored directly.
     """
-    model = registry.get_available(model_id or settings.default_model_id)
+    model = registry.get_available(model_id or resolve_default_model_id(settings.default_model_id, settings.fallback_model_id))
     try:
         calibration_method = get_method(method)
     except KeyError as exc:

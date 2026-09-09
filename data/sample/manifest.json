@@ -1,0 +1,69 @@
+{
+  "note": "Real medical images from a patient-disjoint TEST split. '_shifted' variants are SIMULATED acquisition shift, not a real second site.",
+  "licence": "CC BY-SA 4.0",
+  "licence_url": "https://creativecommons.org/licenses/by-sa/4.0/",
+  "citation": "Antonelli, M., Reinke, A., Bakas, S. et al. 'The Medical Segmentation Decathlon.' Nature Communications 13, 4128 (2022).",
+  "homepage": "http://medicaldecathlon.com/",
+  "samples": [
+    {
+      "sample": "msd-hippocampus_01.png",
+      "ground_truth": "msd-hippocampus_01_groundtruth.png",
+      "shifted_variant": "msd-hippocampus_01_shifted.png",
+      "dataset": "msd-hippocampus",
+      "dataset_name": "MSD Task04 \u2014 Hippocampus (MRI)",
+      "modality": "MRI",
+      "target": "Hippocampus head (anterior) and body (posterior)",
+      "case_id": "hippocampus_007",
+      "slice_index": 17,
+      "split": "test",
+      "foreground_fraction": 0.1374,
+      "licence": "CC BY-SA 4.0",
+      "citation": "Antonelli, M., Reinke, A., Bakas, S. et al. 'The Medical Segmentation Decathlon.' Nature Communications 13, 4128 (2022)."
+    },
+    {
+      "sample": "msd-hippocampus_02.png",
+      "ground_truth": "msd-hippocampus_02_groundtruth.png",
+      "shifted_variant": "msd-hippocampus_02_shifted.png",
+      "dataset": "msd-hippocampus",
+      "dataset_name": "MSD Task04 \u2014 Hippocampus (MRI)",
+      "modality": "MRI",
+      "target": "Hippocampus head (anterior) and body (posterior)",
+      "case_id": "hippocampus_011",
+      "slice_index": 14,
+      "split": "test",
+      "foreground_fraction": 0.2175,
+      "licence": "CC BY-SA 4.0",
+      "citation": "Antonelli, M., Reinke, A., Bakas, S. et al. 'The Medical Segmentation Decathlon.' Nature Communications 13, 4128 (2022)."
+    },
+    {
+      "sample": "msd-hippocampus_03.png",
+      "ground_truth": "msd-hippocampus_03_groundtruth.png",
+      "shifted_variant": "msd-hippocampus_03_shifted.png",
+      "dataset": "msd-hippocampus",
+      "dataset_name": "MSD Task04 \u2014 Hippocampus (MRI)",
+      "modality": "MRI",
+      "target": "Hippocampus head (anterior) and body (posterior)",
+      "case_id": "hippocampus_033",
+      "slice_index": 12,
+      "split": "test",
+      "foreground_fraction": 0.1524,
+      "licence": "CC BY-SA 4.0",
+      "citation": "Antonelli, M., Reinke, A., Bakas, S. et al. 'The Medical Segmentation Decathlon.' Nature Communications 13, 4128 (2022)."
+    },
+    {
+      "sample": "msd-hippocampus_04.png",
+      "ground_truth": "msd-hippocampus_04_groundtruth.png",
+      "shifted_variant": "msd-hippocampus_04_shifted.png",
+      "dataset": "msd-hippocampus",
+      "dataset_name": "MSD Task04 \u2014 Hippocampus (MRI)",
+      "modality": "MRI",
+      "target": "Hippocampus head (anterior) and body (posterior)",
+      "case_id": "hippocampus_034",
+      "slice_index": 13,
+      "split": "test",
+      "foreground_fraction": 0.1454,
+      "licence": "CC BY-SA 4.0",
+      "citation": "Antonelli, M., Reinke, A., Bakas, S. et al. 'The Medical Segmentation Decathlon.' Nature Communications 13, 4128 (2022)."
+    }
+  ]
+}

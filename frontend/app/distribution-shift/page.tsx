@@ -11,6 +11,7 @@ import {
   YAxis,
 } from '@/components/charts/chart-primitives';
 import { PageContainer, PageHeader } from '@/components/layout/page-container';
+import { DatasetBanner } from '@/components/research/dataset-banner';
 import { EmptyState, ErrorState, LoadingState } from '@/components/layout/states';
 import { MetricCard } from '@/components/research/metric-card';
 import {
@@ -88,6 +89,8 @@ export default function DistributionShiftPage() {
         description="A composite input-space detector comparing each image against a reference domain. It catches modality, exposure and scanner-protocol changes; it does not catch semantic shift that leaves intensity statistics intact."
         badges={config.data && <StatusBadge status={config.data.status} />}
       />
+
+      <DatasetBanner />
 
       {config.isError && <ErrorState error={config.error} onRetry={() => config.refetch()} />}
 

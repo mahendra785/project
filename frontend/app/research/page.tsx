@@ -1,13 +1,14 @@
 'use client';
 
-import { BookOpen, GitBranch, Target } from 'lucide-react';
+import { BookOpen, Database, ExternalLink, GitBranch, Target } from 'lucide-react';
 
 import { PageContainer, PageHeader } from '@/components/layout/page-container';
 import { StatusBadge } from '@/components/research/status-badges';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/primitives';
-import { useCalibrationMethods } from '@/hooks/use-pums';
+import { DatasetBanner } from '@/components/research/dataset-banner';
+import { useCalibrationMethods, useDatasets } from '@/hooks/use-pums';
 import type { ImplementationStatus } from '@/types/api';
 
 /**
@@ -50,7 +51,7 @@ const OBJECTIVES: Array<{
     objective: 'Robust calibration across modalities',
     status: 'planned',
     evidence:
-      'Only one calibration domain (synthetic phantoms) exists. Cross-modality robustness cannot be claimed, or even measured, without multi-modality annotated data.',
+      'Calibration now runs on one REAL annotated MRI domain (MSD Hippocampus), not phantoms — but that is still a single modality. Cross-modality robustness needs a second downloaded domain (msd-spleen CT is registered for exactly this) and remains unmeasured.',
   },
   {
     objective: 'Lightweight post-hoc estimation',
@@ -62,13 +63,19 @@ const OBJECTIVES: Array<{
     objective: 'Standardised evaluation framework',
     status: 'baseline',
     evidence:
-      'Dice, IoU, ECE, Brier, AURC, selective risk and uncertainty–error correlation are implemented and unit-tested against analytically known answers. What is missing is standard DATASETS, not standard metrics.',
+      'Dice, IoU, ECE, Brier, AURC, selective risk and uncertainty–error correlation are implemented, unit-tested against analytically known answers, and now measured on a real annotated MRI dataset with patient-disjoint splits. What is still missing is evaluation across multiple standard benchmarks.',
   },
   {
     objective: 'Foundation-model reliability',
     status: 'planned',
     evidence:
       'The model-agnostic interface is in place and a second (torchvision CNN) adapter demonstrates it. No SAM/SAM2 integration and no foundation-model UQ work has been done.',
+  },
+  {
+    objective: 'Supervised model trained on real annotated data',
+    status: 'baseline',
+    evidence:
+      'A random-forest pixel classifier over a multiscale filter bank (Ilastik-style) trained on the MSD Hippocampus train split. Measured on the held-out TEST split: Dice 0.524, IoU 0.361, ECE 0.111, uncertainty–error correlation 0.512. A real but modest baseline — not a deep network and not clinically validated.',
   },
   {
     objective: 'Clinically actionable decision support',
@@ -148,16 +155,18 @@ const LITERATURE = [
 ];
 
 const NOT_CLAIMED = [
-  'No clinical validation of any kind has been performed.',
-  'No medical dataset has been used; the calibration and reference sets are procedurally generated phantoms.',
-  'No shipped model adapter is a medical model — the default is an unsupervised intensity mixture, the optional CNN is trained on natural images.',
-  'No accuracy, Dice or sensitivity figure on this site refers to medical images.',
-  'Conformal guarantees are marginal and hold only under exchangeability; they lapse under the distribution shift this project targets, and PUMS reports that rather than hiding it.',
+  'No clinical validation of any kind has been performed. Training on real medical data is NOT the same as being validated for clinical use.',
+  'The default segmenter is a random forest over filter responses, not a deep network. Its Dice of ~0.52 on hippocampus MRI is a modest research baseline, well below published deep-learning results on this task.',
+  'Results are measured on ONE dataset (MSD Hippocampus, mono-modal MRI). Nothing here demonstrates generalisation to other scanners, sites, modalities or populations.',
+  'Conformal guarantees are marginal over that dataset and require exchangeability. They lapse under the distribution shift this project targets, and PUMS reports that rather than hiding it.',
+  'The "_shifted" sample images are SIMULATED acquisition corruption, not a real second site. No genuine multi-site OOD evaluation has been done.',
+  'Mild acquisition shift (corruption strength 0.25) scores inside the in-distribution range and is measurably NOT detectable by the current detector.',
   'The risk engine output is a research signal about model reliability, never a statement about a patient.',
 ];
 
 export default function ResearchPage() {
   const methods = useCalibrationMethods();
+  const datasets = useDatasets();
 
   return (
     <PageContainer>
@@ -170,6 +179,7 @@ export default function ResearchPage() {
         <TabsList>
           <TabsTrigger value="objectives">Objectives</TabsTrigger>
           <TabsTrigger value="methods">Methods</TabsTrigger>
+          <TabsTrigger value="data">Data</TabsTrigger>
           <TabsTrigger value="literature">Literature map</TabsTrigger>
           <TabsTrigger value="limits">Not claimed</TabsTrigger>
         </TabsList>
@@ -250,6 +260,116 @@ export default function ResearchPage() {
                   ))}
                 </tbody>
               </table>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="data" className="space-y-4">
+          <DatasetBanner />
+
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-1.5">
+                <Database className="size-4" />
+                Registered datasets
+              </CardTitle>
+              <p className="text-[11px] leading-relaxed text-muted-foreground">
+                No dataset is vendored into this repository. Each carries its
+                licence and citation, and anything behind a data-use agreement is
+                listed but never auto-downloaded — accepting those terms is your
+                decision, not the code&apos;s.
+              </p>
+            </CardHeader>
+            <CardContent className="p-0">
+              <div className="overflow-x-auto">
+                <table className="w-full text-xs">
+                  <thead className="border-b border-border text-[10px] uppercase tracking-wider text-muted-foreground">
+                    <tr>
+                      <th className="px-4 py-2 text-left font-semibold">Dataset</th>
+                      <th className="px-3 py-2 text-left font-semibold">Modality</th>
+                      <th className="px-3 py-2 text-left font-semibold">Target</th>
+                      <th className="px-3 py-2 text-right font-semibold">Size</th>
+                      <th className="px-3 py-2 text-left font-semibold">Status</th>
+                      <th className="px-4 py-2 text-left font-semibold">Licence</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {datasets.data?.datasets.map((dataset) => (
+                      <tr key={dataset.id} className="border-b border-border/60 last:border-0">
+                        <td className="px-4 py-2.5 align-top">
+                          <p className="font-medium">{dataset.name}</p>
+                          <p className="font-mono text-[10px] text-muted-foreground">
+                            {dataset.id}
+                          </p>
+                          <p className="mt-1 max-w-md leading-relaxed text-muted-foreground">
+                            {dataset.use_case}
+                          </p>
+                        </td>
+                        <td className="px-3 py-2.5 align-top">
+                          <Badge variant="outline">{dataset.modality}</Badge>
+                        </td>
+                        <td className="max-w-[200px] px-3 py-2.5 align-top leading-relaxed text-muted-foreground">
+                          {dataset.target}
+                        </td>
+                        <td className="tabular px-3 py-2.5 text-right align-top text-muted-foreground">
+                          {dataset.approx_mb ? `${dataset.approx_mb.toFixed(0)} MB` : '—'}
+                        </td>
+                        <td className="px-3 py-2.5 align-top">
+                          {dataset.available ? (
+                            <Badge variant="ok">Downloaded</Badge>
+                          ) : dataset.requires_registration ? (
+                            <Badge variant="warn">Needs signup</Badge>
+                          ) : (
+                            <Badge variant="outline">Available</Badge>
+                          )}
+                        </td>
+                        <td className="px-4 py-2.5 align-top">
+                          <a
+                            href={dataset.homepage}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="inline-flex items-center gap-1 text-primary hover:underline"
+                          >
+                            {dataset.licence}
+                            <ExternalLink className="size-3" />
+                          </a>
+                          <p className="mt-1 max-w-md leading-relaxed text-[10px] text-muted-foreground">
+                            {dataset.citation}
+                          </p>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle>Adding a dataset</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <pre className="overflow-x-auto rounded-md border border-border bg-muted/50 p-3 font-mono text-[11px] leading-relaxed">
+{`# list the catalogue
+python scripts/download_dataset.py
+
+# fetch one (licence is printed and must be accepted)
+python scripts/download_dataset.py msd-hippocampus
+
+# train the supervised segmenter on its patient-disjoint train split
+python scripts/train_pixel_model.py --dataset msd-hippocampus
+
+# export real slices as demo samples, and re-derive the shift bands
+python scripts/export_samples.py --dataset msd-hippocampus
+python scripts/calibrate_shift_thresholds.py`}
+              </pre>
+              <p className="mt-2 text-[11px] leading-relaxed text-muted-foreground">
+                Splits are patient-disjoint, never slice-level: adjacent slices of
+                one patient are near-duplicates, so a slice split would leak the
+                same anatomy across the boundary and inflate every reported metric
+                including the conformal coverage.
+              </p>
             </CardContent>
           </Card>
         </TabsContent>

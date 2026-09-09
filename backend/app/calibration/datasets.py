@@ -162,11 +162,56 @@ def register_calibration_source(key: str, calibration_set: CalibrationSet) -> No
 def get_calibration_set(
     model: BaseMedicalModel, *, n_samples: int = 80, seed: int = 1337
 ) -> CalibrationSet:
-    """Cached per-model calibration set (built on first use)."""
+    """Cached per-model calibration set (built on first use).
+
+    Resolution order:
+      1. A source explicitly registered via `register_calibration_source()`.
+      2. The configured REAL annotated dataset, if it has been downloaded.
+      3. Procedural phantoms, clearly reported as synthetic.
+
+    Falling back is never silent: the provenance tag on the returned set drives
+    the badges the UI shows, so a phantom-backed result cannot be mistaken for
+    a measurement on clinical data.
+    """
     key = f"{model.metadata().id}:{n_samples}:{seed}"
-    if key not in _SOURCES:
-        logger.info("Building synthetic calibration set for %s", model.metadata().id)
-        _SOURCES[key] = build_synthetic_calibration_set(
-            model, n_samples=n_samples, seed=seed
-        )
+    if key in _SOURCES:
+        return _SOURCES[key]
+
+    from app.core.config import get_settings
+
+    settings = get_settings()
+    if settings.use_real_dataset:
+        try:
+            from app.datasets.download import is_available
+            from app.datasets.medical import build_calibration_set
+
+            if is_available(settings.dataset_id):
+                logger.info(
+                    "Building calibration set from real dataset '%s' for %s",
+                    settings.dataset_id,
+                    model.metadata().id,
+                )
+                _SOURCES[key] = build_calibration_set(
+                    model,
+                    settings.dataset_id,
+                    max_cases=settings.dataset_max_cases,
+                    slices_per_case=settings.dataset_slices_per_case,
+                    max_samples=n_samples,
+                )
+                return _SOURCES[key]
+            logger.warning(
+                "Dataset '%s' is not downloaded; falling back to synthetic "
+                "phantoms. Run: python scripts/download_dataset.py %s",
+                settings.dataset_id,
+                settings.dataset_id,
+            )
+        except Exception as exc:  # a dataset problem must not break inference
+            logger.warning(
+                "Could not build a real calibration set (%s); falling back to "
+                "synthetic phantoms.",
+                exc,
+            )
+
+    logger.info("Building synthetic calibration set for %s", model.metadata().id)
+    _SOURCES[key] = build_synthetic_calibration_set(model, n_samples=n_samples, seed=seed)
     return _SOURCES[key]

@@ -23,7 +23,12 @@ class ModelInfo(ApiModel):
 
     #: Honest provenance of the weights/algorithm.
     trained_on: str
+    #: Whether the weights were fitted on real medical imaging data.
     is_medical: bool
+    #: Always false. Trained-on-medical-data != validated-for-clinical-use.
+    clinically_validated: bool = False
+    #: Dataset id the adapter was trained on, when it is a trained model.
+    trained_dataset: str | None = None
     description: str
     parameters: dict = {}
     input_channels: int = 1

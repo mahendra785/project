@@ -8,7 +8,15 @@ from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
-from app.api.routes import analysis, calibration, evaluation, health, models, shift
+from app.api.routes import (
+    analysis,
+    calibration,
+    datasets,
+    evaluation,
+    health,
+    models,
+    shift,
+)
 from app.core.config import get_settings
 from app.core.errors import PumsError
 from app.core.logging import configure_logging, get_logger
@@ -95,7 +103,7 @@ async def unhandled_handler(request: Request, exc: Exception) -> JSONResponse:
 
 
 app.include_router(health.router)
-for module in (analysis, models, calibration, shift, evaluation):
+for module in (analysis, models, calibration, shift, evaluation, datasets):
     app.include_router(module.router, prefix=settings.api_prefix)
 
 

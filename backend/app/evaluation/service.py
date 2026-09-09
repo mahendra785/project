@@ -30,7 +30,7 @@ from app.evaluation.metrics import (
     selective_risk,
     uncertainty_error_correlation,
 )
-from app.models.registry import ModelRegistry
+from app.models.registry import ModelRegistry, resolve_default_model_id
 from app.schemas.common import AnalysisStatus, DataProvenance, ImplementationStatus
 from app.schemas.evaluation import (
     EvaluationReport,
@@ -166,23 +166,17 @@ class EvaluationService:
 
         metrics: list[MetricValue] = []
         notes: list[str] = [
-            "PUMS ships no medical benchmark results. Nothing on this page is a "
-            "published or reproduced research figure.",
-            "Metrics requiring ground truth are reported as unavailable because no "
-            "annotated dataset is registered.",
+            "PUMS reproduces no published benchmark result. Figures here are "
+            "measured by this instance, on the data named below.",
         ]
 
         metrics.extend(self._session_metrics(completed))
 
         risk_coverage: list[RiskCoverageSeriesPoint] = []
         if include_calibration_run:
-            calibration_metrics, risk_coverage = self._calibration_set_metrics()
+            calibration_metrics, risk_coverage, source_note = self._calibration_set_metrics()
             metrics.extend(calibration_metrics)
-            notes.append(
-                "Calibration-set metrics below are computed on the SYNTHETIC "
-                "phantom set with exact procedural masks — real measurements of "
-                "model behaviour on phantoms, not clinical performance."
-            )
+            notes.append(source_note)
 
         for definition in DEFINITIONS:
             if any(m.id == definition.id for m in metrics):
@@ -264,21 +258,26 @@ class EvaluationService:
 
     def _calibration_set_metrics(
         self,
-    ) -> tuple[list[MetricValue], list[RiskCoverageSeriesPoint]]:
-        """Real Dice/IoU/AURC on the synthetic phantom set.
+    ) -> tuple[list[MetricValue], list[RiskCoverageSeriesPoint], str]:
+        """Dice / IoU / AURC / correlation on the registered calibration split.
 
-        The phantom masks are exact, so these ARE genuine metric computations —
-        they simply describe phantoms. Provenance is tagged SYNTHETIC so no
-        consumer can mistake them for clinical numbers.
+        These are genuine metric computations either way; what changes with the
+        data source is what they DESCRIBE. Provenance is read from the
+        calibration set rather than assumed, so a real annotated dataset reports
+        `computed` and the phantom fallback reports `synthetic` automatically.
         """
         try:
-            model = self.registry.get_available(self.settings.default_model_id)
+            model = self.registry.get_available(
+                resolve_default_model_id(
+                    self.settings.default_model_id, self.settings.fallback_model_id
+                )
+            )
             calibration_set = get_calibration_set(
                 model, n_samples=self.settings.calibration_set_size // 2
             )
         except Exception as exc:
             logger.warning("Could not build calibration metrics: %s", exc)
-            return [], []
+            return [], [], "Calibration-set metrics are unavailable in this environment."
 
         dice_values, iou_values, correlations = [], [], []
         errors_all, uncertainty_all = [], []
@@ -302,6 +301,7 @@ class EvaluationService:
         uncertainties = np.concatenate(uncertainty_all)
         n = len(calibration_set)
 
+        provenance = calibration_set.provenance
         metrics = [
             MetricValue(
                 id="dice",
@@ -309,7 +309,7 @@ class EvaluationService:
                 category="segmentation",
                 value=round(float(np.mean(dice_values)), 4),
                 sample_size=n,
-                provenance=DataProvenance.SYNTHETIC,
+                provenance=provenance,
                 unavailable_reason=None,
             ),
             MetricValue(
@@ -318,7 +318,7 @@ class EvaluationService:
                 category="segmentation",
                 value=round(float(np.mean(iou_values)), 4),
                 sample_size=n,
-                provenance=DataProvenance.SYNTHETIC,
+                provenance=provenance,
             ),
             MetricValue(
                 id="unc_error_corr",
@@ -326,7 +326,7 @@ class EvaluationService:
                 category="uncertainty",
                 value=round(float(np.mean(correlations)), 4),
                 sample_size=n,
-                provenance=DataProvenance.SYNTHETIC,
+                provenance=provenance,
             ),
             MetricValue(
                 id="aurc",
@@ -334,7 +334,7 @@ class EvaluationService:
                 category="uncertainty",
                 value=round(area_under_risk_coverage(errors, uncertainties), 4),
                 sample_size=n,
-                provenance=DataProvenance.SYNTHETIC,
+                provenance=provenance,
             ),
         ]
 
@@ -348,7 +348,11 @@ class EvaluationService:
                 errors, uncertainties, n_points=20
             )
         ]
-        return metrics, curve
+        source_note = (
+            f"Segmentation and uncertainty metrics below are measured on "
+            f"'{calibration_set.name}' ({n} samples). {calibration_set.description}"
+        )
+        return metrics, curve, source_note
 
     # --------------------------------------------------------- self-tests --
     @staticmethod

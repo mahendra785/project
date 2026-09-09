@@ -21,6 +21,7 @@ export const queryKeys = {
   shiftConfig: ['shift', 'config'] as const,
   evaluation: (withCalibration: boolean) => ['evaluation', withCalibration] as const,
   selfTest: ['evaluation', 'self-test'] as const,
+  datasets: ['datasets'] as const,
 };
 
 /** Do not retry contract mismatches or 4xx — only transient failures. */
@@ -126,6 +127,15 @@ export function useEvaluation(includeCalibrationRun = true) {
     queryKey: queryKeys.evaluation(includeCalibrationRun),
     queryFn: () => api.evaluation(includeCalibrationRun),
     staleTime: 60_000,
+    retry: retryPolicy,
+  });
+}
+
+export function useDatasets() {
+  return useQuery({
+    queryKey: queryKeys.datasets,
+    queryFn: api.datasets,
+    staleTime: 5 * 60_000,
     retry: retryPolicy,
   });
 }

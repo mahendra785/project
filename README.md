@@ -9,8 +9,10 @@ Faculty guide: Dr. Shashank Mouli Satapathy
 
 > ### ⚠️ Research prototype — not a medical device
 >
-> PUMS has **no clinical validation**, uses **no medical dataset**, and ships
-> **no validated medical model**. Its risk outputs describe how reliable the
+> PUMS trains and calibrates on **real, openly-licensed annotated medical MRI**
+> (Medical Segmentation Decathlon), but it has **no clinical validation** and
+> ships **no clinically validated model**. Training on medical data is not the
+> same as being fit for clinical use. Its risk outputs describe how reliable the
 > *model* is on a given input — never a patient's condition. Do not use any
 > output for patient care.
 
@@ -35,6 +37,7 @@ built so that every displayed number can be defended:
 
 | Property | How it is enforced |
 | --- | --- |
+| Results come from real annotated MRI | Calibration, the reference domain and the segmenter all use patient-disjoint splits of a real dataset; provenance flips to `computed` automatically because it is read from the calibration set, not hard-coded |
 | Uncertainty is never fabricated | The map is a pure function of the model's posteriors; a test recomputes it independently and asserts an exact match |
 | The UI cannot over-claim | It reads the backend's method registry; `planned` methods return HTTP 501 |
 | Provenance is always visible | Every figure carries `computed` / `synthetic` / `mock` and is badged in the UI |
@@ -82,8 +85,9 @@ pums/
 │   │   ├── risk/               Transparent risk engine
 │   │   ├── evaluation/         Dice, IoU, ECE, AURC, selective risk
 │   │   └── utils/              RLE, PNG encoding, safe statistics
-│   ├── tests/                  93 pytest tests
-│   ├── scripts/                Sample generation, threshold derivation
+│   ├── datasets/           Registry, downloader, NIfTI loaders, real splits
+│   ├── tests/                  107 pytest tests
+│   ├── scripts/                Dataset download, training, sample export, thresholds
 │   └── configs/                Annotated reference configuration
 ├── frontend/                   Next.js 16 · React 19 · TypeScript
 │   ├── app/                    9 App-Router routes
@@ -93,9 +97,10 @@ pums/
 │   ├── lib/                    api/ (client, Zod schemas, endpoints), utils
 │   ├── stores/                 Zustand (client state only)
 │   ├── types/                  Mirror of the Pydantic contract
-│   └── tests/                  25 tests incl. a live contract fixture
+│   └── tests/                  27 tests incl. a live contract fixture
 ├── shared/api-contracts/       How the two sides stay in sync
-├── data/sample/                Synthetic phantoms (NOT medical images)
+├── data/sample/                Real MRI slices exported from the test split
+├── data/datasets/              Downloaded datasets (gitignored, never vendored)
 ├── docs/                       architecture.md · api.md
 └── scripts/                    setup / dev / test-all (PowerShell + bash)
 ```
@@ -105,7 +110,7 @@ pums/
 ## 3. Tech stack
 
 **Backend** — Python 3.11+ · FastAPI · Pydantic v2 · NumPy · SciPy ·
-scikit-learn · scikit-image · OpenCV · Pillow · pydicom · pytest
+scikit-learn · scikit-image · OpenCV · Pillow · pydicom · nibabel · joblib · pytest
 *Optional:* PyTorch · torchvision · MONAI (`requirements-torch.txt`)
 
 **Frontend** — Next.js 16 (App Router) · React 19 · TypeScript · Tailwind CSS 4 ·
@@ -114,12 +119,12 @@ Zod · React Hook Form
 
 **Infrastructure** — Docker / docker-compose (optional) · `.env` configuration
 
-> **Why PyTorch is optional.** The default inference path is a classical
-> probabilistic segmenter that produces genuine posteriors with no pretrained
-> weights, so the whole research stack runs on any machine with a ~400 MB
-> install instead of ~2.5 GB. Torch is only needed for the optional
-> demonstration CNN adapter, and the registry reports it as unavailable rather
-> than failing.
+> **Why PyTorch is optional.** The default segmenter is a random forest over a
+> multiscale filter bank — genuinely supervised, trained on real annotated MRI
+> in ~10 s on CPU, with no GPU and no pretrained weights. The whole research
+> stack therefore runs on any laptop with a ~450 MB install instead of ~2.5 GB.
+> Torch is needed only for the optional demonstration CNN adapter, which the
+> registry reports as unavailable rather than failing.
 
 ---
 
@@ -157,7 +162,21 @@ python -m venv .venv
 source .venv/bin/activate
 
 pip install -r requirements.txt
-python scripts/make_sample_images.py     # generate the sample phantoms
+
+# --- Real medical data (recommended) ---
+# ~28 MB, CC BY-SA 4.0. The licence and citation are printed and must be
+# accepted before anything is downloaded.
+python scripts/download_dataset.py msd-hippocampus
+
+# Train the supervised segmenter on the patient-disjoint TRAIN split (~10 s)
+python scripts/train_pixel_model.py --dataset msd-hippocampus
+
+# Export real MRI slices from the held-out TEST split as demo samples
+python scripts/export_samples.py --dataset msd-hippocampus
+
+# Without the dataset PUMS still runs, on procedural phantoms, and labels
+# every derived figure `synthetic`:
+# python scripts/make_sample_images.py
 
 # Optional: enable the torchvision CNN adapter (~2 GB)
 pip install -r requirements-torch.txt --index-url https://download.pytorch.org/whl/cpu
@@ -206,17 +225,18 @@ docker compose up --build
 
 ### First run
 
-The backend builds a synthetic calibration set and reference profile on a
-background thread at startup (~15 s). `GET /health` reports
+The backend builds the calibration set and reference profile from the
+downloaded dataset on a background thread at startup (~17 s). `GET /health` reports
 `warmup.status`, and the header shows **Warming up** until it is `ready`.
 Analyses run before then still work — they are just slower.
 
 ### Try it
 
 1. Open <http://localhost:3000> → redirects to the dashboard.
-2. Go to **Analyze**, drop in `data/sample/phantom_id_1.png`, press **Run analysis**.
-3. Repeat with `phantom_shift_gamma.png` and `phantom_shift_severe.png` to watch
-   the shift bands and risk overrides fire.
+2. Go to **Analyze**, drop in `data/sample/msd-hippocampus_01.png` (a real MRI
+   slice from the held-out test split), press **Run analysis**.
+3. Repeat with `msd-hippocampus_01_shifted.png` to watch the shift bands and
+   risk overrides fire on simulated acquisition shift.
 4. Hover the heatmap — the readout shows the **decoded numeric value** at that
    pixel, not a colour guess.
 
@@ -271,17 +291,19 @@ Full reference with payloads: [`docs/api.md`](docs/api.md).
 
 | Objective | Status | What actually exists |
 | --- | --- | --- |
-| Statistically calibrated uncertainty | ✅ **Implemented** | Split Conformal Risk Control with the finite-sample `+B/(n+1)` correction (Angelopoulos et al., ICLR 2024). Tests verify loss monotonicity, minimal-λ selection, and that the correction is strictly more conservative than the uncorrected baseline. |
+| Statistically calibrated uncertainty | ✅ **Implemented** | Split Conformal Risk Control with the finite-sample `+B/(n+1)` correction (Angelopoulos et al., ICLR 2024), fitted on a **real patient-disjoint calibration split**. Tests verify loss monotonicity, minimal-λ selection, and that the correction is strictly more conservative than the uncorrected baseline. |
+| Real annotated medical data | ✅ **Implemented** | Dataset registry with licences and citations, licence-gated downloader, NIfTI loaders, and **patient-wise** train/calibration/test splits. Provenance flips from `synthetic` to `computed` automatically. |
+| Supervised model on real anatomy | 🟡 **Baseline** | Random-forest pixel classifier over a multiscale filter bank, trained on MSD Hippocampus. Measured on the held-out test split: **Dice 0.524, IoU 0.361, ECE 0.111, uncertainty–error correlation 0.512**. Modest, and well below deep-learning results on this task. |
 | Hierarchical pixel + object uncertainty | ✅ **Implemented** | One dense field; Levels 2 and 1 are strict aggregations of it, so cross-level consistency is structural. |
 | Localised uncertainty maps | ✅ **Implemented** | Per-pixel normalised entropy, PNG-transported, decoded back to a `Float32Array` in the browser. Verified end-to-end by a round-trip test. |
 | Lightweight post-hoc estimation | ✅ **Implemented** | Single forward pass. No ensembling, MC dropout, or retraining. ~0.4 s end-to-end at 256×256 after warmup. |
-| Calibration robustness (ECE, reliability) | ✅ **Implemented** | ECE, Brier, reliability diagrams, risk–coverage; plus temperature scaling as a second real method. |
-| Distribution-shift awareness | 🟡 **Baseline** | Composite input-space detector (Wasserstein + JS + moments + texture) with **measured** band thresholds. It *detects* shift and invalidates the guarantee — it does not yet *restore* validity. |
-| Standardised evaluation | 🟡 **Baseline** | Dice, IoU, ECE, Brier, AURC, selective risk, uncertainty–error correlation, all unit-tested against known answers. Missing: standard **datasets**, not metrics. |
+| Calibration robustness (ECE, reliability) | ✅ **Implemented** | ECE, Brier, reliability diagrams, risk–coverage; plus temperature scaling as a second real method. Measured ECE on real MRI is **0.111**, i.e. genuine miscalibration for the calibration layer to correct. |
+| Distribution-shift awareness | 🟡 **Baseline** | Composite input-space detector with band thresholds **derived from real held-out MRI** (`0.38 / 0.48 / 0.73`). It *detects* shift and invalidates the guarantee — it does not yet *restore* validity. Measured limitation: mild corruption is **not** separable from inter-patient variation. |
+| Standardised evaluation | 🟡 **Baseline** | Dice, IoU, ECE, Brier, AURC, selective risk, uncertainty–error correlation — unit-tested against known answers **and** measured on a real dataset. Missing: evaluation across multiple benchmarks. |
 | Object-level uncertainty | 🟡 **Baseline** | Region-derived by default; a segmentation-derived proposal adapter exists. No trained detector. |
 | Clinical decision support | 🟠 **Experimental** | Transparent weighted risk engine with override rules, referral priority and triage queue. Not clinically validated. |
 | Foundation-model reliability | ⚪ **Planned** | Model-agnostic interface is in place (proven by a second CNN adapter). No SAM/SAM2 work. |
-| Cross-modality calibration robustness | ⚪ **Planned** | Only one calibration domain exists; cannot be claimed or measured yet. |
+| Cross-modality calibration robustness | ⚪ **Planned** | One real domain (mono-modal MRI) is wired in. `msd-spleen` (CT) is registered specifically to make cross-modality shift measurable, but has not been run. |
 
 Live version of this table: the **Research status** page in the app.
 
@@ -301,8 +323,8 @@ Live version of this table: the **Research status** page in the app.
 ```bash
 ./scripts/test-all.sh            # everything
 
-cd backend  && pytest            # 93 tests
-cd frontend && npm test          # 25 tests
+cd backend  && pytest            # 107 tests
+cd frontend && npm test          # 27 tests
 cd frontend && npm run typecheck
 ```
 
@@ -318,31 +340,98 @@ Highlights:
   image really is the data.
 - `contract.test.mts` — a **real captured backend response** validated against
   the frontend Zod schemas, catching cross-language drift.
+- `test_split_is_by_patient_not_by_slice` — guards the single easiest way to
+  inflate every metric in this project.
+- `test_real_calibration_set_is_marked_computed_not_synthetic` — the provenance
+  flip is asserted, not assumed.
+- `test_archive_extraction_rejects_path_traversal` — a malicious dataset archive
+  cannot write outside its directory.
+
+Dataset-dependent tests **skip** when the data is not downloaded, so a fresh
+clone passes a full run without a download.
+
+---
+
+## 9b. Datasets
+
+PUMS **vendors no data**. Each dataset is registered with its licence and
+citation, both printed before any download and surfaced in the API and UI.
+
+| ID | Modality | Target | Size | Licence | Use case |
+| --- | --- | --- | --- | --- | --- |
+| `msd-hippocampus` *(default)* | MRI | Hippocampus head/body | 28 MB | CC BY-SA 4.0 | Hippocampal volumetry — an Alzheimer's / epilepsy biomarker |
+| `msd-heart` | MRI | Left atrium | 435 MB | CC BY-SA 4.0 | AF ablation planning; 320×320 full-FOV slices |
+| `msd-brain-tumour` | MRI | Glioma sub-regions | 7.3 GB | CC BY-SA 4.0 | Neuro-oncology; the flagship medical UQ benchmark |
+| `msd-spleen` | CT | Spleen | 1.5 GB | CC BY-SA 4.0 | **Cross-modality shift partner** for the MRI domains |
+| `fracatlas` | X-ray | Fracture site | 744 MB | CC BY 4.0 | **ED fracture triage** — clearest value for a calibrated escalate signal |
+| `kvasir-seg` | Endoscopy | Colorectal polyp | 44 MB | CC BY 4.0 | Colonoscopy screening; missed-polyp rate *is* the FNR loss |
+| `brats`, `mura` | MRI / X-ray | — | — | DUA required | Listed, never auto-downloaded |
+
+```bash
+python scripts/download_dataset.py                  # list the catalogue
+python scripts/download_dataset.py msd-hippocampus  # licence shown, must be accepted
+python scripts/train_pixel_model.py --dataset msd-hippocampus
+python scripts/export_samples.py --dataset msd-hippocampus
+python scripts/calibrate_shift_thresholds.py        # re-derive the shift bands
+```
+
+Switch datasets with `PUMS_DATASET_ID=msd-heart`, or disable real data entirely
+with `PUMS_USE_REAL_DATASET=false` (results then report `synthetic`).
+
+**Two methodological choices worth knowing:**
+
+- **Splits are patient-disjoint, never slice-level.** Adjacent slices of one
+  patient are near-duplicates; a slice split would put the same anatomy on both
+  sides of the boundary and inflate every metric — including the conformal
+  coverage, which would then be measured on data the model had already seen.
+- **The densest annotated slices are selected per volume.** This avoids a
+  calibration set dominated by empty background slices where every method looks
+  perfect. It biases the split toward "the structure is present", which is the
+  regime the false-negative-rate loss is about — stated rather than left
+  implicit.
+
+Registration-gated datasets (BraTS, MURA) are listed with their homepages but
+are never fetched automatically: accepting a data-use agreement is your
+decision, not the code's.
 
 ---
 
 ## 10. Known limitations
 
-1. **No medical data, no medical model, no clinical validation.** The default
-   adapter is an unsupervised intensity mixture; the optional CNN is trained on
-   natural images. Both are labelled `is_medical: false`.
-2. **The calibration and reference sets are synthetic phantoms.** The
-   *algorithms* are real and correctly implemented; the *data* is not clinical.
-   Every derived figure is tagged `synthetic`.
-3. **Conformal guarantees are marginal and assume exchangeability**, which
+1. **No clinical validation.** The default adapter *is* trained on real
+   annotated MRI, but training on medical data is not the same as being
+   validated for clinical use. Every adapter reports
+   `clinically_validated: false`.
+2. **A modest baseline model.** Dice 0.524 on hippocampus MRI is a real but
+   weak result — a random forest over filter responses has no anatomical prior
+   and makes spatially incoherent errors a U-Net would not. It is a defensible
+   research baseline, not a deployable segmenter.
+3. **One dataset, one modality.** All measurements come from MSD Hippocampus
+   (mono-modal MRI, 260 volumes). Nothing here demonstrates generalisation to
+   other scanners, sites, modalities or populations.
+4. **The `_shifted` samples are simulated.** Gamma + bias field + noise is a
+   *model* of cross-scanner change, not a real second site. No genuine
+   multi-site OOD evaluation has been done.
+5. **Mild shift is measurably undetectable.** Corruption at strength 0.25
+   scores 0.328, inside the in-distribution range (max 0.410). Natural
+   inter-patient variation is as large as that much protocol change. Reported
+   rather than hidden by tightening the threshold.
+6. **Conformal guarantees are marginal and assume exchangeability**, which
    distribution shift violates. PUMS detects this and emits a validity warning —
    but restoring validity under shift is **not yet implemented**, and that is the
    project's principal remaining gap.
-4. **Shift detection is input-space only.** Semantic shift that preserves
+7. **Shift detection is input-space only.** Semantic shift that preserves
    intensity statistics will not be caught. `confidence_degradation` and
    `uncertainty_increase` are heuristic couplings, **not** measured drops.
-5. **Per-region "calibrated risk" is a combination, not a guarantee.**
+8. **Per-region "calibrated risk" is a combination, not a guarantee.**
    Region-conditional control needs localized risk control (planned).
-6. **Single-pass entropy is aleatoric-dominated** and does not isolate epistemic
+9. **Single-pass entropy is aleatoric-dominated** and does not isolate epistemic
    uncertainty.
-7. **2-D only.** Multi-frame DICOM takes the middle slice. No NIfTI.
-8. **No database, no authentication, no multi-user.** Storage is JSON files
-   behind a repository interface so a real store can be added later.
+10. **2-D only.** Volumes are sliced; the densest annotated slices are taken,
+    which biases the split toward "structure present" (disclosed, and the
+    regime the FNR loss is about). Multi-frame DICOM takes the middle slice.
+11. **No database, no authentication, no multi-user.** Storage is JSON files
+    behind a repository interface so a real store can be added later.
 
 ---
 
@@ -350,17 +439,20 @@ Highlights:
 
 In the order that would add the most value:
 
-1. **Register a real annotated medical split** as the calibration source. Every
-   `SYNTHETIC` badge becomes `COMPUTED` and every derived figure becomes a
-   genuine measurement — *no algorithm changes needed*. See
-   [`data/README.md`](data/README.md) for the exact hook.
-2. **Add a trained medical segmentation adapter** (nnU-Net or a MONAI bundle)
-   behind `BaseMedicalModel`.
-3. **Implement adaptive / weighted conformal risk control** so the guarantee
+1. **Implement adaptive / weighted conformal risk control** so the guarantee
    survives the shift the detector already identifies. *This is the actual
    research contribution and the largest remaining gap.*
-4. **Build paired ID/OOD splits** so calibration degradation under shift becomes
-   measured rather than heuristic.
+2. **Download a second, cross-modality domain** (`msd-spleen`, CT) and measure
+   real calibration degradation under genuine distribution shift — turning
+   `confidence_degradation` from a heuristic into a measurement. The registry
+   and loaders already support this; it needs one download and one script.
+3. **Add a deep segmentation adapter** (nnU-Net or a MONAI bundle) behind
+   `BaseMedicalModel` to replace the random-forest baseline. Dice should move
+   from ~0.52 to ~0.85 on this task, and the calibration story gets stronger
+   because deep networks are more overconfident, not less.
+4. **Add the fracture use case** — `fracatlas` is registered (CC BY 4.0,
+   X-ray, segmentation masks for the fractured subset) and is the setting where
+   a calibrated "escalate this" signal has the clearest clinical value.
 5. **Implement localized (region-conditional) risk control** so per-region risk
    becomes a guarantee.
 6. Spatially-aware conformal prediction (SACP), evidential uncertainty as a

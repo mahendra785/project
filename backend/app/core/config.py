@@ -50,7 +50,11 @@ class Settings(BaseSettings):
     max_upload_bytes: int = 25 * 1024 * 1024
 
     # --------------------------------------------------------- inference ---
-    default_model_id: str = "intensity-mixture-seg-v1"
+    #: Preferred adapter. `rf-pixel-seg-v1` is supervised and reports itself
+    #: unavailable until trained, in which case the registry-backed fallback in
+    #: `resolve_default_model_id()` selects the unsupervised mixture instead.
+    default_model_id: str = "rf-pixel-seg-v1"
+    fallback_model_id: str = "intensity-mixture-seg-v1"
     #: Every image is resized to this square working resolution before
     #: inference so that pixel-level maps have a predictable, transferable size.
     inference_size: int = 256
@@ -65,6 +69,18 @@ class Settings(BaseSettings):
     min_region_area: int = 24
     max_reported_regions: int = 12
 
+    # ----------------------------------------------------------- dataset ---
+    #: Real annotated dataset backing calibration and the reference domain.
+    #: When it is downloaded, every derived figure is a genuine measurement and
+    #: is reported with provenance "computed". When it is absent, PUMS falls
+    #: back to procedural phantoms and reports "synthetic" — it never pretends
+    #: the fallback is real data.
+    dataset_id: str = "msd-hippocampus"
+    use_real_dataset: bool = True
+    #: Cases/slices drawn when building calibration and reference splits.
+    dataset_max_cases: int = 140
+    dataset_slices_per_case: int = 3
+
     # ------------------------------------------------------- calibration ---
     #: Target expected risk alpha for conformal risk control.
     default_target_risk: float = 0.10
@@ -78,21 +94,28 @@ class Settings(BaseSettings):
     # ------------------------------------------------------------- shift ---
     # Upper bounds on the composite shift score for each status band.
     #
-    # DERIVED, NOT GUESSED. Produced by `scripts/calibrate_shift_thresholds.py`
-    # against the synthetic reference domain:
-    #   * known-in-distribution phantoms score p50=0.236, p95=0.386, p99=0.421
-    #     -> ID band ends at 0.42, so ~99% of genuine ID inputs are called ID;
-    #   * the weakest controlled corruption averages 0.57, so the MILD/MODERATE
-    #     split sits midway between the ID ceiling and that point;
-    #   * full intensity inversion averages 0.82, so SEVERE begins just below it.
+    # DERIVED FROM REAL DATA, NOT GUESSED. Produced by
+    # `scripts/calibrate_shift_thresholds.py` against the msd-hippocampus MRI
+    # reference domain, using held-out patient slices as the in-distribution
+    # population:
+    #   * real ID slices score p50=0.125, p95=0.263, p99=0.377, max=0.410
+    #     -> ID band ends at 0.38, accepting ~99% of genuine ID inputs;
+    #   * MODERATE begins above the observed ID MAXIMUM (not a percentile), so
+    #     the bands cannot overlap the natural inter-patient range;
+    #   * strong acquisition corruption averages 0.764 -> SEVERE just below it.
     #
-    # These are operating points on synthetic phantoms. They calibrate the
-    # detector against its own reference domain and are NOT a measurement of
+    # MEASURED LIMITATION: mild acquisition corruption (strength 0.25) scores
+    # 0.328, which lies inside the in-distribution range and is therefore NOT
+    # detectable. Natural inter-patient variation in this dataset is as large as
+    # that much protocol change. This is reported rather than hidden by
+    # tightening the threshold.
+    #
+    # Operating points against one reference domain — NOT a measurement of
     # clinical OOD detection performance. Re-run the script after changing the
-    # reference profile.
-    shift_threshold_mild: float = 0.42
-    shift_threshold_moderate: float = 0.50
-    shift_threshold_severe: float = 0.78
+    # dataset or reference profile.
+    shift_threshold_mild: float = 0.38
+    shift_threshold_moderate: float = 0.48
+    shift_threshold_severe: float = 0.73
 
     # -------------------------------------------------------------- risk ---
     risk_weight_uncertainty: float = 0.40

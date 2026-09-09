@@ -16,6 +16,11 @@ from PIL import Image
 os.environ.setdefault("PUMS_STORAGE_BACKEND", "memory")
 os.environ.setdefault("PUMS_CALIBRATION_SET_SIZE", "24")
 os.environ.setdefault("PUMS_LOG_LEVEL", "WARNING")
+# Tests must not depend on a downloaded dataset: they pin the deterministic
+# phantom source so the suite passes on a fresh clone. `test_datasets.py`
+# covers the real-dataset path separately and skips when it is absent.
+os.environ.setdefault("PUMS_USE_REAL_DATASET", "false")
+os.environ.setdefault("PUMS_DEFAULT_MODEL_ID", "intensity-mixture-seg-v1")
 
 
 @pytest.fixture(scope="session")

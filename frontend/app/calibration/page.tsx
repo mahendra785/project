@@ -18,6 +18,7 @@ import {
   YAxis,
 } from '@/components/charts/chart-primitives';
 import { PageContainer, PageHeader } from '@/components/layout/page-container';
+import { DatasetBanner } from '@/components/research/dataset-banner';
 import { ErrorState, LoadingState } from '@/components/layout/states';
 import { MetricCard } from '@/components/research/metric-card';
 import { ProvenanceBadge, StatusBadge } from '@/components/research/status-badges';
@@ -197,6 +198,8 @@ export default function CalibrationPage() {
           methods.data && <Badge variant="outline">{methods.data.methods.length} methods</Badge>
         }
       />
+
+      <DatasetBanner />
 
       <div className="grid gap-4 lg:grid-cols-[300px_1fr]">
         <div className="space-y-4">

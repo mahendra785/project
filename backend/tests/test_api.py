@@ -24,13 +24,14 @@ def test_root_carries_disclaimer(client):
 
 def test_models_endpoint_reports_honest_provenance(client):
     body = client.get("/api/models").json()
-    assert body["default_model_id"] == "intensity-mixture-seg-v1"
+    assert body["default_model_id"] in {m["id"] for m in body["models"]}
 
     for model in body["models"]:
         assert model["trained_on"], "every adapter must declare what it was trained on"
         assert model["status"] in ("implemented", "baseline", "experimental", "planned")
-        # No shipped adapter may claim to be a validated medical model.
-        assert model["is_medical"] is False
+        # An adapter may legitimately be trained on medical data, but NOTHING in
+        # this project may claim clinical validation.
+        assert model["clinically_validated"] is False
 
 
 def test_unknown_model_returns_404(client):
@@ -321,6 +322,28 @@ def test_evaluation_reports_unavailable_metrics_honestly(client):
     assert planned["detection_map"]["value"] is None
     assert planned["detection_map"]["unavailable_reason"]
     assert body["notes"]
+
+
+def test_evaluation_with_calibration_run_returns_measured_metrics(client):
+    """Exercises the calibration-metrics path, not just the cheap one.
+
+    Regression test: the only evaluation test used
+    `include_calibration_run=False`, so a broken return signature in
+    `_calibration_set_metrics` reached the running server as a 500.
+    """
+    response = client.get("/api/evaluation", params={"include_calibration_run": True})
+    assert response.status_code == 200, response.text
+    body = response.json()
+
+    measured = {m["id"]: m for m in body["metrics"] if m["value"] is not None}
+    assert {"dice", "iou", "unc_error_corr", "aurc"} <= set(measured)
+
+    for metric in measured.values():
+        assert metric["provenance"] in ("computed", "synthetic")
+        assert metric["sample_size"] > 0
+    # The report must name the data its numbers describe.
+    assert any(len(note) > 40 for note in body["notes"])
+    assert body["risk_coverage_curve"]
 
 
 def test_evaluation_self_test_passes(client):

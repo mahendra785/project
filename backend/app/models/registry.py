@@ -12,6 +12,7 @@ from app.core.errors import ModelNotFoundError, ModelUnavailableError
 from app.core.logging import get_logger
 from app.models.adapters.intensity_mixture import IntensityMixtureSegmenter
 from app.models.adapters.region_proposal import RegionProposalDetector
+from app.models.adapters.rf_pixel_segmenter import RandomForestPixelSegmenter
 from app.models.adapters.torchvision_segmenter import TorchvisionSegmenter
 from app.models.base import BaseMedicalModel
 from app.schemas.models import ModelInfo
@@ -21,6 +22,15 @@ logger = get_logger(__name__)
 #: Research components each adapter is currently wired to. Kept beside the
 #: registry so the UI never has to guess what a model is connected to.
 _WIRING = {
+    "rf-pixel-seg-v1": {
+        "uncertainty_method": "normalised_predictive_entropy",
+        "calibration_methods": [
+            "conformal_risk_control",
+            "temperature_scaling",
+            "baseline_threshold",
+        ],
+        "ood_detector": "composite_intensity_shift_v1",
+    },
     "intensity-mixture-seg-v1": {
         "uncertainty_method": "normalised_predictive_entropy",
         "calibration_methods": [
@@ -56,6 +66,7 @@ class ModelRegistry:
 
     def __init__(self, seed: int = 1337) -> None:
         self._factories: dict[str, Callable[[], BaseMedicalModel]] = {
+            "rf-pixel-seg-v1": lambda: RandomForestPixelSegmenter(seed=seed),
             "intensity-mixture-seg-v1": lambda: IntensityMixtureSegmenter(seed=seed),
             "region-proposal-det-v1": lambda: RegionProposalDetector(seed=seed),
             "deeplabv3-resnet50-voc": TorchvisionSegmenter,
@@ -109,6 +120,8 @@ class ModelRegistry:
             ood_detector=wiring.get("ood_detector", "unknown"),
             trained_on=descriptor.trained_on,
             is_medical=descriptor.is_medical,
+            clinically_validated=descriptor.clinically_validated,
+            trained_dataset=descriptor.parameters.get("trained_dataset"),
             description=descriptor.description,
             parameters=descriptor.parameters,
             input_channels=descriptor.input_channels,
@@ -120,6 +133,24 @@ class ModelRegistry:
 
 
 _registry: ModelRegistry | None = None
+
+
+def resolve_default_model_id(preferred: str, fallback: str, seed: int = 1337) -> str:
+    """Pick the preferred adapter when it can actually run, else the fallback.
+
+    The supervised adapter reports itself unavailable until it has been
+    trained, so a fresh clone with no dataset still serves requests instead of
+    failing every analysis with a 503.
+    """
+    registry = get_registry(seed=seed)
+    try:
+        available, _ = registry.get(preferred).availability()
+        if available:
+            return preferred
+    except Exception:
+        pass
+    logger.info("Default model '%s' is unavailable; using '%s'", preferred, fallback)
+    return fallback
 
 
 def get_registry(seed: int = 1337) -> ModelRegistry:

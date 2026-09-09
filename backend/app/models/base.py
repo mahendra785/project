@@ -90,8 +90,13 @@ class ModelDescriptor:
     status: ImplementationStatus
     description: str
     trained_on: str
+    #: True when the weights were fitted on real medical imaging data.
     is_medical: bool
     class_labels: list[str]
+    #: ALWAYS False in this project. Being trained on medical data is not the
+    #: same as being validated for clinical use, and conflating the two is the
+    #: single easiest way for a research prototype to mislead.
+    clinically_validated: bool = False
     input_channels: int = 1
     parameters: dict = field(default_factory=dict)
     #: Package imports required at runtime, checked by `availability()`.

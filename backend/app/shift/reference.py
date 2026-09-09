@@ -100,18 +100,59 @@ def set_reference_profile(profile: ReferenceProfile) -> None:
     _PROFILES[profile.name] = profile
 
 
-def get_reference_profile(name: str = "synthetic_reference_v1") -> ReferenceProfile:
-    if name not in _PROFILES:
-        if name != "synthetic_reference_v1":
-            logger.warning(
-                "Reference domain '%s' is not registered; falling back to the "
-                "synthetic default.",
-                name,
-            )
-            return get_reference_profile()
+DEFAULT_REFERENCE = "synthetic_reference_v1"
+
+
+def _try_real_reference() -> ReferenceProfile | None:
+    """Build the reference domain from the configured real dataset, if present."""
+    from app.core.config import get_settings
+
+    settings = get_settings()
+    if not settings.use_real_dataset:
+        return None
+    try:
+        from app.datasets.download import is_available
+        from app.datasets.medical import build_reference_profile
+
+        if not is_available(settings.dataset_id):
+            return None
+        logger.info("Building reference domain from real dataset '%s'", settings.dataset_id)
+        return build_reference_profile(
+            settings.dataset_id,
+            max_cases=settings.dataset_max_cases,
+            slices_per_case=settings.dataset_slices_per_case,
+        )
+    except Exception as exc:
+        logger.warning("Could not build a real reference profile (%s)", exc)
+        return None
+
+
+def get_reference_profile(name: str = DEFAULT_REFERENCE) -> ReferenceProfile:
+    """Resolve a reference domain, preferring real data over phantoms.
+
+    `synthetic_reference_v1` is treated as "the default domain" rather than
+    "the phantom domain": when a real dataset is available it resolves to that
+    dataset's acquisition domain, so `ID` means *this scanner and protocol*
+    instead of *phantom-like*. The returned profile's `name` and `description`
+    always state which it actually is.
+    """
+    if name in _PROFILES:
+        return _PROFILES[name]
+
+    if name == DEFAULT_REFERENCE:
+        real = _try_real_reference()
+        if real is not None:
+            _PROFILES[DEFAULT_REFERENCE] = real
+            _PROFILES[real.name] = real
+            return real
         logger.info("Building default synthetic reference profile")
         _PROFILES[name] = _build_synthetic_reference()
-    return _PROFILES[name]
+        return _PROFILES[name]
+
+    logger.warning(
+        "Reference domain '%s' is not registered; falling back to the default.", name
+    )
+    return get_reference_profile()
 
 
 def list_reference_domains() -> list[str]:

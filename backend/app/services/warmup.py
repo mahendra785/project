@@ -28,7 +28,7 @@ def status() -> dict:
 
 def _run(settings: Settings) -> None:
     from app.calibration.datasets import get_calibration_set
-    from app.models.registry import get_registry
+    from app.models.registry import get_registry, resolve_default_model_id
     from app.shift.reference import get_reference_profile
 
     started = time.perf_counter()
@@ -38,7 +38,7 @@ def _run(settings: Settings) -> None:
 
         get_reference_profile()
         model = get_registry(seed=settings.random_seed).get_available(
-            settings.default_model_id
+            resolve_default_model_id(settings.default_model_id, settings.fallback_model_id)
         )
         get_calibration_set(model, n_samples=settings.calibration_set_size // 2)
 

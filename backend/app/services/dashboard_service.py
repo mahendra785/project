@@ -73,7 +73,7 @@ class DashboardService:
             failed_analyses=sum(
                 1 for r in records if r.status is AnalysisStatus.FAILED
             ),
-            active_model_id=self.settings.default_model_id,
+            active_model_id=self._active_model_id(),
             active_model_name=self._active_model_name(),
             mean_uncertainty=float(uncertainties.mean()) if uncertainties.size else None,
             mean_confidence=float(confidences.mean()) if confidences.size else None,
@@ -91,10 +91,17 @@ class DashboardService:
             recent=[summarise(record) for record in records[:recent_limit]],
         )
 
+    def _active_model_id(self) -> str:
+        from app.models.registry import resolve_default_model_id
+
+        return resolve_default_model_id(
+            self.settings.default_model_id, self.settings.fallback_model_id
+        )
+
     def _active_model_name(self) -> str:
         from app.models.registry import get_registry
 
         try:
-            return get_registry().get(self.settings.default_model_id).metadata().name
+            return get_registry().get(self._active_model_id()).metadata().name
         except Exception:
-            return self.settings.default_model_id
+            return self._active_model_id()
