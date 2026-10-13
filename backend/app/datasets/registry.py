@@ -39,6 +39,8 @@ class DatasetFormat(str, Enum):
     MSD_NIFTI = "msd_nifti"
     #: Paired image/mask PNG or JPG directories inside a zip.
     IMAGE_MASK_ZIP = "image_mask_zip"
+    #: Images plus a COCO JSON of segmentation polygons inside a zip (FracAtlas).
+    COCO_POLYGON_ZIP = "coco_polygon_zip"
 
 
 @dataclass(frozen=True)
@@ -214,7 +216,7 @@ DATASETS: dict[str, DatasetSpec] = {
             "calibrated 'I am not sure, escalate this' signal has the clearest "
             "clinical value."
         ),
-        fmt=DatasetFormat.IMAGE_MASK_ZIP,
+        fmt=DatasetFormat.COCO_POLYGON_ZIP,
         # Resolved from the figshare article API (v7); the article-page
         # "download" link returns 202/empty until figshare has staged the file.
         url="https://ndownloader.figshare.com/files/65518038",

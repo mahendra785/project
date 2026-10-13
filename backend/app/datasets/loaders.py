@@ -178,6 +178,70 @@ def _load_image_mask_pairs(spec: DatasetSpec, max_cases: int) -> list[Slice2D]:
     return out
 
 
+def _load_coco_polygons(
+    spec: DatasetSpec, max_cases: int, *, include_negatives: bool = False
+) -> list[Slice2D]:
+    """FracAtlas: COCO polygons rasterised at NATIVE resolution.
+
+    Rasterising at native resolution (not after a resize) keeps component
+    counts faithful; the caller labels components here and resizes the label
+    map with nearest-neighbour interpolation. Polygons that touch merge into a
+    single connected component, which is the convention the lesion loss uses
+    (components of the ground-truth mask, not annotation records).
+
+    FracAtlas has no patient identifier, so ``case_id`` is the image id and
+    group-wise splitting degrades to image-wise; the dataset's ``multiscan``
+    flag is not a study id and cannot be used to group. Disclosed in the
+    research report.
+
+    ``include_negatives`` adds the non-fractured radiographs with empty masks;
+    they are used only as training negatives, never in a calibration loss.
+    """
+    import json
+
+    from PIL import Image, ImageDraw
+
+    root = dataset_root(spec)
+    coco_path = next(root.rglob("COCO_fracture_masks.json"), None)
+    if coco_path is None:
+        raise FileNotFoundError(f"COCO_fracture_masks.json not found under {root}")
+    coco = json.loads(coco_path.read_text(encoding="utf-8"))
+    by_image: dict[int, list] = {}
+    for ann in coco["annotations"]:
+        by_image.setdefault(ann["image_id"], []).append(ann)
+    image_dir = next(d for d in root.rglob("Fractured") if d.is_dir())
+
+    out: list[Slice2D] = []
+    for info in sorted(coco["images"], key=lambda r: r["file_name"])[:max_cases]:
+        path = image_dir / info["file_name"]
+        anns = by_image.get(info["id"], [])
+        if not path.exists() or not anns:
+            continue
+        with Image.open(path) as handle:
+            image = np.asarray(handle.convert("L"), dtype=np.float64) / 255.0
+        canvas = Image.new("L", (image.shape[1], image.shape[0]), 0)
+        draw = ImageDraw.Draw(canvas)
+        for ann in anns:
+            seg = ann["segmentation"]
+            polygons = json.loads(seg) if isinstance(seg, str) else seg
+            for poly in polygons:
+                if len(poly) >= 6:
+                    draw.polygon(list(map(float, poly)), outline=1, fill=1)
+        mask = np.asarray(canvas) > 0
+        if mask.any():
+            out.append(Slice2D(image, mask, Path(info["file_name"]).stem, 0, spec.id))
+
+    if include_negatives:
+        negative_dir = next(d for d in root.rglob("Non_fractured") if d.is_dir())
+        for path in sorted(negative_dir.iterdir())[:max_cases]:
+            if path.suffix.lower() not in IMAGE_EXTENSIONS:
+                continue
+            with Image.open(path) as handle:
+                image = np.asarray(handle.convert("L"), dtype=np.float64) / 255.0
+            out.append(Slice2D(image, np.zeros(image.shape, bool), path.stem, 0, spec.id))
+    return out
+
+
 def load_slices(
     dataset_id: str, *, max_cases: int = 120, slices_per_case: int = 2
 ) -> list[Slice2D]:
@@ -191,6 +255,8 @@ def load_slices(
 
     if spec.fmt is DatasetFormat.MSD_NIFTI:
         slices = _load_msd(spec, max_cases, slices_per_case)
+    elif spec.fmt is DatasetFormat.COCO_POLYGON_ZIP:
+        slices = _load_coco_polygons(spec, max_cases)
     else:
         slices = _load_image_mask_pairs(spec, max_cases)
 
