@@ -79,3 +79,32 @@ The user stopped all large downloads (PyTorch/CUDA wheels and MSD Task08), so:
   deferred; the 3-D pipeline (`train_backbone_msd.py`) is built but not run.
 - Hypotheses, metrics, splits, baselines, grids and decision rules are
   **unchanged**.
+
+---
+
+## Amendment 2 — 2026-10-14, controlled simulation (E7), registered before it was run
+
+**Disclosure.** Before this amendment, the harness was debugged on 120 units of
+the blob generator in `tests/test_structured_crc.py` (20 repetitions). That run
+showed the lesion-equalized method smaller than joint-threshold. Those numbers
+were deleted and are not reported. A 5-repetition check on real FracAtlas seed-0
+posteriors showed the RF backbone has out-of-fold Dice ≈ 0.06 and the methods
+roughly tied. The main runs are unchanged by either.
+
+**E7 purpose.** Test Proposition 2/3's mechanism under control: when lesion
+confidence falls with lesion size, lesion-equalized sets should need smaller sets
+than thresholding for the same joint guarantee; when confidence does not depend
+on size, they should tie or lose (false-candidate cost).
+
+**Generator** (`scripts/experiments/simulation.py`, fixed before running):
+128² units; K ~ 1 + Poisson(1.5) lesions; radius r ~ U(2, 12) px; posterior on
+lesion k is the Gaussian bump a_k·exp(−d²/2r²) with
+a_k = clip(a_0·(r/12)^γ + N(0, 0.05), 0.05, 1), a_0 = 0.9; background
+p ~ U(0, b) plus 3 Poisson noise bumps of amplitude U(0.1, 0.35). GT = disc
+of radius r. γ ∈ {0, 0.5, 1, 1.5, 2} (γ = 0: amplitude independent of size),
+b ∈ {0.05, 0.15}. 600 units per cell, seed 0, 500 repetitions, same split, rules,
+families and metric as the main protocol.
+
+**Decision rule.** The mechanism is supported if `ours_union` vs
+`union_threshold` is < 0 with P(smaller) ≥ 0.95 at γ ≥ 1 for both b, **and**
+the advantage at γ = 2 is larger than at γ = 0. It fails otherwise.
