@@ -55,9 +55,17 @@ def families() -> list[ScoreFamily]:
     return default_family_grid() + [ScoreFamily("dilation")]
 
 
-def load_posteriors(dataset: str, seed: int, backbone: str):
-    d = np.load(POST_ROOT / dataset / f"{backbone}_seed{seed}.npz")
-    return d["prob"].astype(np.float32), d["labels"], d["valid"]
+def iter_posteriors(dataset: str, seed: int, backbone: str):
+    """Yield (prob, labels, valid) per unit: one stacked npz (2-D) or one file per volume (3-D)."""
+    path = POST_ROOT / dataset / f"{backbone}_seed{seed}"
+    if path.is_dir():
+        for f in sorted(path.glob("*.npz")):
+            d = np.load(f)
+            yield d["prob"].astype(np.float32), d["labels"], d["valid"]
+        return
+    d = np.load(path.with_suffix(".npz"))
+    for p, lab, v in zip(d["prob"], d["labels"], d["valid"]):
+        yield p.astype(np.float32), lab, v
 
 
 def unit_cache(dataset, seed, backbone, tau, lambdas):
@@ -65,17 +73,17 @@ def unit_cache(dataset, seed, backbone, tau, lambdas):
     path = CACHE_ROOT / f"{dataset}_{backbone}_seed{seed}_tau{tau:g}_g{lambdas.size}.pkl"
     if path.exists():
         return pickle.loads(path.read_bytes())
-    prob, labels, valid = load_posteriors(dataset, seed, backbone)
-    out = {"_mass": prob.reshape(len(prob), -1).sum(1)}
-    for fam in families():
-        t = time.time()
-        units = []
-        for p, lab, v in zip(prob, labels, valid):
+    fams = families()
+    out = {"_mass": [], **{f.label: [] for f in fams}}
+    t = time.time()
+    for p, lab, v in iter_posteriors(dataset, seed, backbone):
+        out["_mass"].append(float(p.sum()))
+        for fam in fams:
             s = fam.score(p)
             s[~v] = 0.0  # letterbox padding enters the set only at lambda = 1
-            units.append(unit_stats(s, lab, tau=tau, lambdas=lambdas))
-        out[fam.label] = units
-        print(f"    stats {fam.label:<40} {time.time()-t:5.1f}s")
+            out[fam.label].append(unit_stats(s, lab, tau=tau, lambdas=lambdas))
+    out["_mass"] = np.asarray(out["_mass"])
+    print(f"    stats for {len(out['_mass'])} units x {len(fams)} families: {time.time()-t:.0f}s")
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_bytes(pickle.dumps(out))
     return out

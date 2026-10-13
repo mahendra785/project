@@ -61,13 +61,13 @@ def letterbox(arr: np.ndarray, size: int, *, nearest: bool) -> tuple[np.ndarray,
     return out, v
 
 
-def prepare(dataset: str, size: int):
+def prepare(dataset: str, size: int, *, negatives: bool = True, max_units: int = 100_000):
     if dataset == "fracatlas":
-        pos = _load_coco_polygons(get_spec(dataset), 100_000)
-        neg = [s for s in _load_coco_polygons(get_spec(dataset), 100_000, include_negatives=True)
-               if not s.mask.any()]
+        pos = _load_coco_polygons(get_spec(dataset), max_units)
+        neg = [s for s in _load_coco_polygons(get_spec(dataset), max_units, include_negatives=True)
+               if not s.mask.any()] if negatives else []
     else:
-        pos, neg = load_slices(dataset, max_cases=100_000), []
+        pos, neg = load_slices(dataset, max_cases=max_units), []
     images, labels, valids, ids = [], [], [], []
     for s in pos:
         lab = gt_components(s.mask, MIN_COMPONENT_PX).astype(np.uint16)
@@ -145,6 +145,28 @@ def predict(model, x, mean, std, device, batch=8):
     return np.concatenate(out)
 
 
+def train_predict_rf(x_tr, y_tr, x_te, *, seed, model_dir):
+    """CPU backbone: the repository's supervised random forest over a filter bank.
+
+    Same adapter the app serves (RandomForestPixelSegmenter), retrained per fold.
+    Used when PyTorch is unavailable; a weaker model than the U-Net, reported as such.
+    """
+    from app.datasets.medical import as_preprocessed
+    from app.models.adapters.rf_pixel_segmenter import RandomForestPixelSegmenter
+
+    path = model_dir / f"rf_fold_seed{seed}.joblib"
+    if path.exists():
+        path.unlink()
+    model = RandomForestPixelSegmenter(model_path=path, seed=seed)
+    model.train([im.astype(np.float64) / 255.0 for im in x_tr], [m > 0 for m in y_tr],
+                dataset_id="crossfit", n_cases=len(x_tr))
+    model.load()
+    out = np.stack([model.predict_segmentation(as_preprocessed(im.astype(np.float64) / 255.0))
+                    .foreground_probability for im in x_te])
+    path.unlink(missing_ok=True)
+    return np.clip(out, 0, 1)
+
+
 def dice(p, y):
     a, b = p >= 0.5, y > 0
     return float(2 * (a & b).sum() / max(a.sum() + b.sum(), 1))
@@ -158,44 +180,60 @@ def main():
     ap.add_argument("--epochs", type=int, default=40)
     ap.add_argument("--size", type=int, default=512)
     ap.add_argument("--batch", type=int, default=8)
+    ap.add_argument("--backbone", choices=["unet-r34", "rf"], default="unet-r34")
+    ap.add_argument("--max-units", type=int, default=100_000, help="smoke tests only")
+    ap.add_argument("--tag", default="", help="suffix for smoke-test outputs")
     args = ap.parse_args()
-    import segmentation_models_pytorch as smp
-    import torch
+    if args.backbone == "unet-r34":
+        import segmentation_models_pytorch as smp
+        import torch
+        env = dict(torch=torch.__version__, smp=smp.__version__, cuda=torch.version.cuda,
+                   gpu=torch.cuda.get_device_name(0))
+    else:
+        import sklearn
+        env = dict(sklearn=sklearn.__version__, device="cpu")
+    env["python"] = platform.python_version()
 
-    device = "cuda"
     t0 = time.time()
-    x, y, valid, ids, x_neg = prepare(args.dataset, args.size)
+    x, y, valid, ids, x_neg = prepare(args.dataset, args.size, negatives=args.backbone == "unet-r34",
+                                      max_units=args.max_units)
     n = len(x)
     rng = np.random.default_rng(1000 + args.seed)
     fold = rng.permutation(np.arange(n) % args.folds)
     prob = np.zeros((n, args.size, args.size), np.float16)
     fold_dice = []
-    print(f"{args.dataset}: {n} units, {len(x_neg)} negatives, {args.folds} folds, prep {time.time()-t0:.0f}s")
+    model_dir = BACKEND_ROOT / "var" / "models"
+    model_dir.mkdir(parents=True, exist_ok=True)
+    print(f"{args.dataset}: {n} units, {len(x_neg)} negatives, {args.folds} folds, "
+          f"backbone {args.backbone}, prep {time.time()-t0:.0f}s", flush=True)
     for f in range(args.folds):
         tr, te = np.flatnonzero(fold != f), np.flatnonzero(fold == f)
         tf = time.time()
-        model, mean, std = train_fold(x[tr], y[tr], x_neg, epochs=args.epochs,
-                                      seed=args.seed * 100 + f, device=device, batch=args.batch)
-        p = predict(model, x[te], mean, std, device)
+        if args.backbone == "unet-r34":
+            model, mean, std = train_fold(x[tr], y[tr], x_neg, epochs=args.epochs,
+                                          seed=args.seed * 100 + f, device="cuda", batch=args.batch)
+            p = predict(model, x[te], mean, std, "cuda")
+            del model
+            torch.cuda.empty_cache()
+        else:
+            p = train_predict_rf(x[tr], y[tr], x[te], seed=args.seed * 100 + f, model_dir=model_dir)
         prob[te] = p.astype(np.float16)
         d = [dice(p[i], y[te][i]) for i in range(len(te))]
         fold_dice.append(float(np.mean(d)))
-        print(f"  fold {f}: train {len(tr)} test {len(te)}  Dice {fold_dice[-1]:.3f}  ({time.time()-tf:.0f}s)")
-        del model
-        torch.cuda.empty_cache()
+        print(f"  fold {f}: train {len(tr)} test {len(te)}  Dice {fold_dice[-1]:.3f}  ({time.time()-tf:.0f}s)",
+              flush=True)
 
     out_dir = OUT_ROOT / args.dataset
     out_dir.mkdir(parents=True, exist_ok=True)
-    path = out_dir / f"unet-r34_seed{args.seed}.npz"
+    path = out_dir / f"{args.backbone}{args.tag}_seed{args.seed}.npz"
     np.savez_compressed(path, prob=prob, labels=y, valid=valid, ids=np.asarray(ids), fold=fold)
     digest = hashlib.sha256(path.read_bytes()).hexdigest()
     manifest = dict(
-        dataset=args.dataset, backbone="unet-resnet34-imagenet", seed=args.seed, folds=args.folds,
+        dataset=args.dataset, backbone=args.backbone, seed=args.seed, folds=args.folds,
         epochs=args.epochs, size=args.size, n_units=n, n_negatives=len(x_neg),
         min_component_px_native=MIN_COMPONENT_PX, fold_dice=fold_dice,
         mean_dice=float(np.mean(fold_dice)), sha256=digest, seconds=round(time.time() - t0),
-        env=dict(python=platform.python_version(), torch=torch.__version__, smp=smp.__version__,
-                 cuda=torch.version.cuda, gpu=torch.cuda.get_device_name(0)),
+        env=env,
     )
     path.with_suffix(".json").write_text(json.dumps(manifest, indent=2))
     print(json.dumps(manifest, indent=2))

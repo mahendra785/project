@@ -61,3 +61,21 @@ union threshold (`union_threshold`), even though the baseline is calibrated on
 4. Repetitions share units, so the 1000 repetitions are not independent samples;
    the percentile intervals describe split-to-split variability, not a sampling
    CI for the population. Independent evidence comes from training seeds and datasets.
+
+---
+
+## Amendment 1 — 2026-10-14, before any real posterior or result existed
+
+The user stopped all large downloads (PyTorch/CUDA wheels and MSD Task08), so:
+
+- **Backbone** for this round is the repository's CPU random-forest pixel
+  segmenter (`RandomForestPixelSegmenter`, filter bank, 120 trees, depth 16),
+  retrained per fold with the same 5-fold cross-fitting, seeds 0, 1, 2. It is a
+  weak model, and the paper says so. The U-Net path (`--backbone unet-r34`) is
+  kept and runs unchanged once PyTorch is installed.
+- **Working resolution** is 256² instead of 512² (CPU cost). The W1 FracAtlas
+  audit shows 0.0% of fracture components fall below 10 px at 256².
+- **Datasets**: FracAtlas (primary) and Kvasir-SEG (control). Task08 is
+  deferred; the 3-D pipeline (`train_backbone_msd.py`) is built but not run.
+- Hypotheses, metrics, splits, baselines, grids and decision rules are
+  **unchanged**.
