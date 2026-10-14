@@ -5,6 +5,7 @@ import {
   FlaskConical,
   GaugeCircle,
   LayoutDashboard,
+  Presentation,
   Radar,
   ScanSearch,
   Stethoscope,
@@ -66,6 +67,13 @@ export const NAV_ITEMS: NavItem[] = [
     label: 'Evaluation',
     icon: Activity,
     description: 'Metric implementations and session measurements',
+    group: 'Research',
+  },
+  {
+    href: '/showcase',
+    label: 'Project demo',
+    icon: Presentation,
+    description: 'End-to-end walkthrough: novelty, live workflow and every recorded result',
     group: 'Research',
   },
   {
