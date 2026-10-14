@@ -42,6 +42,8 @@ def risk_matrix(st: StackedStats, risk: str) -> tuple[np.ndarray, np.ndarray]:
         return st.les_rate, np.ones(len(st), dtype=bool)
     if risk == "small":
         return st.small_rate[st.has_small], st.has_small
+    if risk == "les_multi":  # lesion miss conditional on K >= 2 (label-defined subpopulation)
+        return st.les_rate[st.multi], st.multi
     raise ValueError(risk)
 
 

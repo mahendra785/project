@@ -15,7 +15,10 @@ from app.calibration.base import (
     PlannedMethod,
 )
 from app.calibration.conformal import BaselineThresholdCalibration, ConformalRiskControl
+from app.calibration.families import ScoreFamily
+from app.calibration.lesion_crc import StructuredConformalRiskControl
 from app.calibration.temperature import TemperatureScaling
+from app.schemas.common import ImplementationStatus
 
 _METHODS: dict[str, BaseCalibrationMethod] = {}
 
@@ -28,6 +31,32 @@ def _register(method: BaseCalibrationMethod) -> BaseCalibrationMethod:
 _register(ConformalRiskControl())
 _register(TemperatureScaling())
 _register(BaselineThresholdCalibration())
+_register(
+    StructuredConformalRiskControl(
+        "lesion_aware_crc",
+        "Lesion-aware joint CRC (lesion-equalized sets)",
+        "Controls pixel FNR, the lesion-miss rate and the small-lesion miss rate "
+        "simultaneously, using lesion-equalized prediction sets that peak-normalise "
+        "each candidate lesion so faint lesions do not drag the global threshold down.",
+        # Modal family chosen on the tuning split for Kvasir-SEG (RF backbone) at
+        # alpha = 0.05 and 0.10: docs/research/results/summary.md. The served
+        # calibration set is a different domain, so this is a default, not a
+        # re-tuned choice; on these data it ties joint thresholding (H2 failed).
+        ScoreFamily("lesion_equalized", rho=0.5, t0=0.05),
+        reference="This project (PUMS), docs/research/theory-memo-v2.md",
+    )
+)
+_register(
+    StructuredConformalRiskControl(
+        "morphological_conformal",
+        "Morphological prediction sets (joint risks)",
+        "Dilates the argmax mask until pixel, lesion and small-lesion risks all meet "
+        "alpha. Structure-aware baseline for lesion-aware CRC.",
+        ScoreFamily("dilation"),
+        reference="Mossina & Friedrich, MICCAI 2025",
+        status=ImplementationStatus.BASELINE,
+    )
+)
 
 _register(
     PlannedMethod(
@@ -57,16 +86,6 @@ _register(
         "guarantees can hold inside clinically critical zones. Not implemented.",
         reference="Zecchin & Simeone, Localized Adaptive Risk Control, 2024",
         assumptions=[],
-    )
-)
-_register(
-    PlannedMethod(
-        "morphological_conformal",
-        "Conformal Segmentation via Morphological Prediction Sets",
-        "Wraps a black-box segmenter by dilating its mask until the risk target "
-        "is met, requiring no logits. Not implemented.",
-        reference="Mossina et al., MICCAI 2025",
-        assumptions=[EXCHANGEABILITY],
     )
 )
 _register(

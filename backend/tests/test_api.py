@@ -349,3 +349,14 @@ def test_evaluation_with_calibration_run_returns_measured_metrics(client):
 def test_evaluation_self_test_passes(client):
     body = client.get("/api/evaluation/self-test").json()
     assert body["all_passed"] is True
+
+
+def test_research_mgcrc_endpoint_shape(client):
+    response = client.get("/api/research/mgcrc")
+    assert response.status_code == 200
+    body = response.json()
+    assert body["provenance"] == "computed"
+    assert isinstance(body["blocks"], list)
+    if body["available"]:
+        block = body["blocks"][0]
+        assert {"verdicts", "rows", "gap"} <= set(block)

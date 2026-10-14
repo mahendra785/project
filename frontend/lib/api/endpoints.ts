@@ -8,6 +8,7 @@
 import { ANALYSIS_TIMEOUT_MS, ApiError, request } from './client';
 import * as s from './schemas';
 import type {
+  MgcrcSummary,
   AnalysisListResponse,
   DatasetsResponse,
   ResearchSummary,
@@ -169,6 +170,11 @@ export const api = {
   async researchSummary(): Promise<ResearchSummary> {
     const data = await request<unknown>('/api/research/summary', { timeoutMs: 60_000 });
     return parse(s.researchSummarySchema, data, '/api/research/summary') as unknown as ResearchSummary;
+  },
+
+  async mgcrc(): Promise<MgcrcSummary> {
+    const data = await request<unknown>('/api/research/mgcrc', { timeoutMs: 60_000 });
+    return parse(s.mgcrcSummarySchema, data, '/api/research/mgcrc') as MgcrcSummary;
   },
 
   async selfTest(): Promise<SelfTestResponse> {

@@ -158,3 +158,84 @@ def research_summary(settings: SettingsDep, registry: RegistryDep) -> ResearchSu
             "classical baseline segmenter. No clinical validation has been performed."
         ),
     )
+
+
+# ------------------------------------------------------------------ MG-CRC --
+MGCRC_FILE = REPO_ROOT / "docs" / "research" / "results" / "mgcrc_summary.json"
+
+
+class MgcrcRow(ApiModel):
+    alpha: float
+    method: str
+    n_seeds: int
+    risk_pix: float | None = None
+    risk_les: float | None = None
+    risk_small: float | None = None
+    risk_les_multi: float | None = None
+    set_to_truth: float | None = None
+    set_to_truth_lo: float | None = None
+    set_to_truth_hi: float | None = None
+    rel: float | None = None
+    rel_lo: float | None = None
+    rel_hi: float | None = None
+    p_smaller: float | None = None
+
+
+class MgcrcGap(ApiModel):
+    alpha: float
+    G: float | None = None
+    G_multi: float | None = None
+    G_multi_lo: float | None = None
+    G_multi_hi: float | None = None
+    G_small: float | None = None
+    G_small_lo: float | None = None
+    G_small_hi: float | None = None
+    n_cal_multi: float | None = None
+
+
+class MgcrcBlock(ApiModel):
+    dataset: str
+    backbone: str
+    tau: float
+    mean_dice: float | None
+    n_units: int
+    n_multi: int
+    n_with_small: int
+    n_seeds: int
+    reps_per_seed: int
+    verdicts: dict
+    rows: list[MgcrcRow]
+    gap: list[MgcrcGap]
+    chosen_family: dict[str, int]
+
+
+class MgcrcSummary(ApiModel):
+    available: bool
+    provenance: str
+    blocks: list[MgcrcBlock]
+    source: str
+
+
+def _finite(v):
+    return v if isinstance(v, (int, float)) and np.isfinite(v) else None
+
+
+@router.get("/research/mgcrc", response_model=MgcrcSummary, summary="Lesion-aware joint CRC results")
+def research_mgcrc() -> MgcrcSummary:
+    """Serves the aggregated results file verbatim (no recomputation, no hand-typed numbers)."""
+    if not MGCRC_FILE.exists():
+        return MgcrcSummary(available=False, provenance="computed", blocks=[], source=str(MGCRC_FILE.name))
+    blocks = []
+    for b in json.loads(MGCRC_FILE.read_text("utf-8")):
+        m = b["meta"][0]
+        blocks.append(MgcrcBlock(
+            dataset=b["dataset"], backbone=b["backbone"], tau=b["tau"], mean_dice=b.get("mean_dice"),
+            n_units=m["n_units"], n_multi=m["n_multi"], n_with_small=m["n_with_small"],
+            n_seeds=len(b["meta"]), reps_per_seed=m["reps"], verdicts=b["verdicts"],
+            rows=[MgcrcRow(**{k: (_finite(v) if k not in ("method",) else v) for k, v in r.items()
+                              if k in MgcrcRow.model_fields}) for r in b["rows"]],
+            gap=[MgcrcGap(**{k: _finite(v) for k, v in g.items() if k in MgcrcGap.model_fields}) for g in b["gap"]],
+            chosen_family=b["chosen_family"],
+        ))
+    return MgcrcSummary(available=True, provenance="computed", blocks=blocks,
+                        source="docs/research/results/mgcrc_summary.json")

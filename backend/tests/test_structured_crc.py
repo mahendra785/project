@@ -160,3 +160,23 @@ def test_select_family_returns_member_of_grid():
         units = [unit_stats(fam.score(p), gt_components(m), lambdas=lambda_grid(201)) for p, m in raw]
         tuning[fam.label] = stack(units, small_max_size=40, lambdas=lambda_grid(201))
     assert select_family(tuning, 0.1) in tuning
+
+
+def test_app_method_calibrates_and_applies():
+    from app.calibration.datasets import CalibrationSample, CalibrationSet
+    from app.calibration.registry import get_method
+    from app.schemas.common import DataProvenance
+
+    rng = np.random.default_rng(8)
+    samples = []
+    for _ in range(40):
+        p, m = _blob_image(rng, size=48, k=2)
+        samples.append(CalibrationSample(foreground_probability=p, ground_truth=m))
+    cs = CalibrationSet(samples=samples, name="t", provenance=DataProvenance.SYNTHETIC, description="")
+    for mid in ("lesion_aware_crc", "morphological_conformal"):
+        method = get_method(mid)
+        res = method.calibrate(cs, target_risk=0.2, n_bins=10)
+        assert 0.0 <= res.threshold <= 1.0
+        assert any("lesion miss" in w for w in res.validity_warnings)
+        applied = method.apply(res, samples[0].foreground_probability)
+        assert applied.abstain_mask.shape == (48, 48)

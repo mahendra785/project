@@ -599,3 +599,56 @@ export interface ResearchSummary {
   experiments: Experiment[];
   disclaimer: string;
 }
+
+/* ---------------------------------------------- lesion-aware joint CRC -- */
+export interface MgcrcRow {
+  alpha: number;
+  method: string;
+  n_seeds: number;
+  risk_pix: number | null;
+  risk_les: number | null;
+  risk_small: number | null;
+  risk_les_multi: number | null;
+  set_to_truth: number | null;
+  set_to_truth_lo: number | null;
+  set_to_truth_hi: number | null;
+  rel: number | null;
+  rel_lo: number | null;
+  rel_hi: number | null;
+  p_smaller: number | null;
+}
+
+export interface MgcrcGap {
+  alpha: number;
+  G: number | null;
+  G_multi: number | null;
+  G_multi_lo: number | null;
+  G_multi_hi: number | null;
+  G_small: number | null;
+  G_small_lo: number | null;
+  G_small_hi: number | null;
+  n_cal_multi: number | null;
+}
+
+export interface MgcrcBlock {
+  dataset: string;
+  backbone: string;
+  tau: number;
+  mean_dice: number | null;
+  n_units: number;
+  n_multi: number;
+  n_with_small: number;
+  n_seeds: number;
+  reps_per_seed: number;
+  verdicts: { H1: string; H2: Record<string, string>; validity: Record<string, string> };
+  rows: MgcrcRow[];
+  gap: MgcrcGap[];
+  chosen_family: Record<string, number>;
+}
+
+export interface MgcrcSummary {
+  available: boolean;
+  provenance: string;
+  blocks: MgcrcBlock[];
+  source: string;
+}

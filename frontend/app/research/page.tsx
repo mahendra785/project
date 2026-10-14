@@ -8,6 +8,7 @@ import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/primitives';
 import { DatasetBanner } from '@/components/research/dataset-banner';
+import { MgcrcResults } from '@/components/research/mgcrc-results';
 import { useCalibrationMethods, useDatasets } from '@/hooks/use-pums';
 import type { ImplementationStatus } from '@/types/api';
 
@@ -175,14 +176,19 @@ export default function ResearchPage() {
         description="An honest map of what this repository actually does versus what the proposal aims at. Nothing is marked implemented unless the code exists here and the test suite exercises it."
       />
 
-      <Tabs defaultValue="objectives">
+      <Tabs defaultValue="mgcrc">
         <TabsList>
+          <TabsTrigger value="mgcrc">Lesion-level CRC</TabsTrigger>
           <TabsTrigger value="objectives">Objectives</TabsTrigger>
           <TabsTrigger value="methods">Methods</TabsTrigger>
           <TabsTrigger value="data">Data</TabsTrigger>
           <TabsTrigger value="literature">Literature map</TabsTrigger>
           <TabsTrigger value="limits">Not claimed</TabsTrigger>
         </TabsList>
+
+        <TabsContent value="mgcrc">
+          <MgcrcResults />
+        </TabsContent>
 
         <TabsContent value="objectives">
           <Card>

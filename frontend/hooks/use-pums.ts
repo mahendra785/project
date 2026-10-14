@@ -24,6 +24,7 @@ export const queryKeys = {
   datasets: ['datasets'] as const,
   samples: ['samples'] as const,
   research: ['research', 'summary'] as const,
+  mgcrc: ['research', 'mgcrc'] as const,
 };
 
 /** Do not retry contract mismatches or 4xx — only transient failures. */
@@ -155,6 +156,15 @@ export function useResearchSummary() {
   return useQuery({
     queryKey: queryKeys.research,
     queryFn: api.researchSummary,
+    staleTime: 5 * 60_000,
+    retry: retryPolicy,
+  });
+}
+
+export function useMgcrc() {
+  return useQuery({
+    queryKey: queryKeys.mgcrc,
+    queryFn: api.mgcrc,
     staleTime: 5 * 60_000,
     retry: retryPolicy,
   });

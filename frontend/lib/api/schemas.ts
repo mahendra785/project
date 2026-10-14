@@ -535,3 +535,61 @@ export const researchSummarySchema = z.object({
   ),
   disclaimer: z.string(),
 });
+
+const num = z.number().nullable();
+
+export const mgcrcSummarySchema = z.object({
+  available: z.boolean(),
+  provenance: z.string(),
+  source: z.string(),
+  blocks: z.array(
+    z.object({
+      dataset: z.string(),
+      backbone: z.string(),
+      tau: z.number(),
+      mean_dice: num,
+      n_units: z.number(),
+      n_multi: z.number(),
+      n_with_small: z.number(),
+      n_seeds: z.number(),
+      reps_per_seed: z.number(),
+      verdicts: z.object({
+        H1: z.string(),
+        H2: z.record(z.string()),
+        validity: z.record(z.string()),
+      }),
+      rows: z.array(
+        z.object({
+          alpha: z.number(),
+          method: z.string(),
+          n_seeds: z.number(),
+          risk_pix: num,
+          risk_les: num,
+          risk_small: num,
+          risk_les_multi: num,
+          set_to_truth: num,
+          set_to_truth_lo: num,
+          set_to_truth_hi: num,
+          rel: num,
+          rel_lo: num,
+          rel_hi: num,
+          p_smaller: num,
+        }),
+      ),
+      gap: z.array(
+        z.object({
+          alpha: z.number(),
+          G: num,
+          G_multi: num,
+          G_multi_lo: num,
+          G_multi_hi: num,
+          G_small: num,
+          G_small_lo: num,
+          G_small_hi: num,
+          n_cal_multi: num,
+        }),
+      ),
+      chosen_family: z.record(z.number()),
+    }),
+  ),
+});

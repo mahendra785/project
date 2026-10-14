@@ -111,24 +111,24 @@ def run(dataset, seed, backbone, reps, tau, alphas, lambdas):
         perm = rng.permutation(n)
         tune, cal, test = perm[:n_tune], perm[n_tune:n_tune + n_cal], perm[n_tune + n_cal:]
         tc = np.concatenate([tune, cal])
+        b_tc, b_test = base.subset(tc), base.subset(test)
+        d_tc, d_test = stacks["dilation"].subset(tc), stacks["dilation"].subset(test)
+        tune_stacks = {k: stacks[k].subset(tune) for k in le_labels}
+        q = np.quantile(mass[tc], np.linspace(0, 1, N_STRATA + 1)[1:-1])
+        strat_tc, strat_test = np.digitize(mass[tc], q), np.digitize(mass[test], q)
         for alpha in alphas:
             res = {}
-            b_tc, b_test = base.subset(tc), base.subset(test)
             i_pix, _ = crc_index(b_tc.pix_rate, alpha)
             res["pixel_crc"] = evaluate(b_test, i_pix, lambdas)
             res["union_threshold"] = evaluate(b_test, union_index(b_tc, alpha)[0], lambdas)
             res["max_threshold"] = evaluate(b_test, max_index(b_tc, alpha)[0], lambdas)
             res["ltt_threshold"] = evaluate(b_test, ltt_index(b_tc, alpha, LTT_DELTA)[0], lambdas)
-            d = stacks["dilation"]
-            res["union_dilation"] = evaluate(d.subset(test), union_index(d.subset(tc), alpha)[0], lambdas)
+            res["union_dilation"] = evaluate(d_test, union_index(d_tc, alpha)[0], lambdas)
             # CCRA-S-style strata on total predicted mass; cutpoints from tune U cal (label-free)
-            q = np.quantile(mass[tc], np.linspace(0, 1, N_STRATA + 1)[1:-1])
-            strat_tc, strat_test = np.digitize(mass[tc], q), np.digitize(mass[test], q)
             per = stratified_indices(b_tc, strat_tc, alpha)
             res["union_stratified"] = evaluate(
                 b_test, np.asarray([per.get(int(g), (lambdas.size - 1, False))[0] for g in strat_test]), lambdas)
             # ours: family on tune, calibrate on cal
-            tune_stacks = {k: stacks[k].subset(tune) for k in le_labels}
             for rule, fn in (("union", union_index), ("max", max_index)):
                 fam = select_family(tune_stacks, alpha, rule)
                 st = stacks[fam]
