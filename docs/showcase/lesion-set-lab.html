@@ -1,0 +1,354 @@
+<title>Lesion Set Lab</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Newsreader:opsz,wght@6..72,500;6..72,600&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: a working bench. Controls rail + live viewer on top, metrics beside it; explainer and real-data panels below. Stacks to one column on phones. */
+:root{
+  --bg:#f3f6f7; --surface:#ffffff; --fg:#13202a; --muted:#56646f; --line:#d7dfe4;
+  --accent:#0f7f86; --accent-soft:#e0f0f1; --base:#b4651d; --base-soft:#f6eadf;
+  --ok:#2f7d4a; --bad:#c03b3b; --ok-soft:#e5f2e9; --bad-soft:#f7e2e2; --warn:#a46a07; --warn-soft:#f7eedb;
+  --scan-lo:#0b1114; --scan-hi:#e9f0f2;
+  --serif:"Newsreader",Georgia,serif; --sans:"IBM Plex Sans",system-ui,-apple-system,"Segoe UI",sans-serif; --mono:"IBM Plex Mono",ui-monospace,Consolas,monospace;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --bg:#0d1418; --surface:#141d23; --fg:#e3eaee; --muted:#93a3ad; --line:#25323a;
+  --accent:#4fc1c7; --accent-soft:#10363a; --base:#e39a55; --base-soft:#3a2716;
+  --ok:#6cc58a; --bad:#f07b7b; --ok-soft:#163120; --bad-soft:#3b1c1c; --warn:#e2b04f; --warn-soft:#352a12; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#0d1418; --surface:#141d23; --fg:#e3eaee; --muted:#93a3ad; --line:#25323a;
+  --accent:#4fc1c7; --accent-soft:#10363a; --base:#e39a55; --base-soft:#3a2716;
+  --ok:#6cc58a; --bad:#f07b7b; --ok-soft:#163120; --bad-soft:#3b1c1c; --warn:#e2b04f; --warn-soft:#352a12; color-scheme:dark}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--fg);font:15px/1.6 var(--sans);padding-inline:16px;padding-block:28px 56px}
+.page{max-width:1180px;margin:0 auto;display:grid;gap:22px}
+header{display:grid;gap:8px;max-width:78ch}
+.eyebrow{font:500 11.5px/1 var(--mono);letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+h1,h2,h3{font-family:var(--serif);font-weight:600;line-height:1.2;margin:0;text-wrap:balance}
+h1{font-size:clamp(28px,4vw,40px)}
+h2{font-size:22px}
+h3{font-size:16px;font-family:var(--sans)}
+p{margin:0}
+.lede{color:var(--muted);font-size:16.5px}
+.panel{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:18px;min-width:0}
+.bench{display:grid;grid-template-columns:260px minmax(0,1fr) 300px;gap:16px;align-items:start}
+.rail{display:grid;gap:16px}
+.field{display:grid;gap:6px}
+.field label{font-weight:500;font-size:13.5px;display:flex;justify-content:space-between;gap:8px}
+.field label output{font-family:var(--mono);color:var(--accent)}
+.field .hint{font-size:12.5px;color:var(--muted)}
+input[type=range]{width:100%;accent-color:var(--accent)}
+.seg{display:inline-flex;border:1px solid var(--line);border-radius:6px;overflow:hidden;width:max-content;max-width:100%}
+.seg button{font:500 13px var(--sans);background:var(--surface);color:var(--fg);border:0;padding:6px 11px;cursor:pointer}
+.seg button+button{border-left:1px solid var(--line)}
+.seg button[aria-pressed="true"]{background:var(--accent);color:var(--surface)}
+.btn{font:500 13.5px var(--sans);border:1px solid var(--line);background:var(--surface);color:var(--fg);border-radius:6px;padding:7px 12px;cursor:pointer}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:var(--surface)}
+button:focus-visible,input:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.status{font:12.5px var(--mono);color:var(--muted);min-height:1.6em}
+.viewer{display:grid;gap:12px}
+.vhead{display:flex;flex-wrap:wrap;gap:10px;align-items:center;justify-content:space-between}
+.frames{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}
+figure{margin:0;display:grid;gap:6px;min-width:0}
+figure canvas{width:100%;max-width:100%;aspect-ratio:1/1;image-rendering:pixelated;border-radius:6px;background:var(--scan-lo);display:block}
+figcaption{font-size:12.5px;color:var(--muted);display:flex;justify-content:space-between;gap:6px;flex-wrap:wrap}
+figcaption b{color:var(--fg);font-weight:600}
+.keys{display:flex;flex-wrap:wrap;gap:14px;font-size:12.5px;color:var(--muted)}
+.keys i{display:inline-block;width:11px;height:11px;border-radius:2px;margin-right:6px;vertical-align:-1px}
+.metrics{display:grid;gap:12px}
+table{border-collapse:collapse;width:100%;font-size:13px;font-variant-numeric:tabular-nums}
+th,td{padding:6px 6px;border-bottom:1px solid var(--line);text-align:right;white-space:nowrap}
+th:first-child,td:first-child{text-align:left}
+thead th{font:500 10.5px/1.3 var(--mono);letter-spacing:.05em;text-transform:uppercase;color:var(--muted)}
+tbody tr:last-child td{border-bottom:0}
+td.over{color:var(--bad);font-weight:600}
+tr.ours td{background:var(--accent-soft)} tr.ref td{background:var(--base-soft)}
+.tbl{overflow-x:auto}
+.big{display:grid;gap:4px;padding:12px;border-radius:8px;background:var(--bg)}
+.big .num{font:600 30px/1 var(--serif);font-variant-numeric:tabular-nums}
+.big .num.good{color:var(--ok)} .big .num.badc{color:var(--bad)}
+.big p{font-size:12.5px;color:var(--muted)}
+.pill{display:inline-block;font:600 10.5px/1 var(--mono);letter-spacing:.06em;text-transform:uppercase;padding:5px 7px;border-radius:4px}
+.pill.ok{background:var(--ok-soft);color:var(--ok)} .pill.bad{background:var(--bad-soft);color:var(--bad)} .pill.warn{background:var(--warn-soft);color:var(--warn)}
+.two{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:16px}
+.explain{display:grid;gap:12px}
+.explain svg{width:100%;height:auto;display:block}
+.explain svg text{fill:var(--muted);font:11px var(--sans)}
+.note{font-size:13px;color:var(--muted)}
+.ctrls{display:flex;flex-wrap:wrap;gap:10px;align-items:center}
+footer{font-size:12.5px;color:var(--muted);max-width:90ch}
+@media (max-width:1060px){.bench{grid-template-columns:240px minmax(0,1fr)} .metrics{grid-column:1/-1}}
+@media (max-width:720px){.bench,.two{grid-template-columns:minmax(0,1fr)} .frames{grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}}
+@media (prefers-reduced-motion:no-preference){.seg button,.btn{transition:background .15s}}
+</style>
+
+<div class="page">
+<header>
+  <p class="eyebrow">PUMS · lesion-level conformal risk control · live model</p>
+  <h1>Lesion Set Lab</h1>
+  <p class="lede">The full method runs in your browser. It generates 300 synthetic scans, calibrates prediction sets that bound pixel misses, lesion misses and small-lesion misses at once, and compares plain thresholding with lesion-equalized sets on held-out scans.</p>
+</header>
+
+<section class="bench">
+  <div class="panel rail" aria-label="Controls">
+    <div class="field">
+      <label for="gamma">Small-lesion faintness γ <output id="gamma-o">0.5</output></label>
+      <input id="gamma" type="range" min="0" max="2" step="0.25" value="0.5">
+      <p class="hint">Lesion confidence ∝ radius<sup>γ</sup>. At 0 every lesion is equally confident; at 2 small lesions are very faint.</p>
+    </div>
+    <div class="field">
+      <label for="bg">Background noise b <output id="bg-o">0.05</output></label>
+      <input id="bg" type="range" min="0.02" max="0.2" step="0.01" value="0.05">
+    </div>
+    <div class="field">
+      <span style="font-weight:500;font-size:13.5px">Target risk α</span>
+      <span class="seg" id="alpha-seg" role="group" aria-label="Target risk"></span>
+      <p class="hint">Each of the three risks must be ≤ α on average.</p>
+    </div>
+    <div class="field">
+      <label for="seed">Random seed <output id="seed-o">7</output></label>
+      <input id="seed" type="range" min="1" max="50" step="1" value="7">
+    </div>
+    <button class="btn primary" id="run" type="button">Recalibrate</button>
+    <p class="status" id="status" aria-live="polite">Calibrating…</p>
+  </div>
+
+  <div class="panel viewer" aria-label="Held-out scan viewer">
+    <div class="vhead">
+      <h2 id="v-title">Held-out scan</h2>
+      <div class="ctrls">
+        <button class="btn" id="prev" type="button" aria-label="Previous scan">←</button>
+        <button class="btn" id="next" type="button" aria-label="Next scan">→</button>
+        <button class="btn" id="hard" type="button">Jump to a scan where they differ</button>
+      </div>
+    </div>
+    <div class="frames">
+      <figure><canvas id="c0" width="64" height="64" aria-label="Model posterior"></canvas><figcaption><b>Model posterior</b><span id="cap0"></span></figcaption></figure>
+      <figure><canvas id="c1" width="64" height="64" aria-label="Joint thresholding set"></canvas><figcaption><b>Joint thresholding</b><span id="cap1"></span></figcaption></figure>
+      <figure><canvas id="c2" width="64" height="64" aria-label="Lesion-equalized set"></canvas><figcaption><b>Lesion-equalized</b><span id="cap2"></span></figcaption></figure>
+    </div>
+    <div class="keys">
+      <span><i style="background:var(--base)"></i>thresholding set</span>
+      <span><i style="background:var(--accent)"></i>lesion-equalized set</span>
+      <span><i style="background:var(--scan-hi)"></i>lesion found</span>
+      <span><i style="background:var(--bad)"></i>lesion missed (&lt; 50% covered)</span>
+    </div>
+    <p class="note" id="v-note"></p>
+  </div>
+
+  <div class="panel metrics" aria-label="Held-out results">
+    <h3>Held-out scans, this run</h3>
+    <div class="big"><span class="num" id="m-delta">–</span><p id="m-delta-p">Set size, lesion-equalized vs joint thresholding, same guarantee.</p></div>
+    <div class="tbl" id="m-table"></div>
+    <p class="note" id="m-fam"></p>
+  </div>
+</section>
+
+<section class="two">
+  <div class="panel explain">
+    <h2>Why equalization helps</h2>
+    <p class="note">A slice through one scan: a confident large lesion and a faint small one. Thresholding has to drop its cutoff below the faint lesion, and the background comes in with it. Equalization rescales each candidate against its own peak, so one cutoff finds both.</p>
+    <svg id="mech" viewBox="0 0 560 250" role="img" aria-label="Posterior profile with thresholding and equalized cutoffs"></svg>
+    <div class="field">
+      <label for="rho">Equalization strength ρ <output id="rho-o">1</output></label>
+      <input id="rho" type="range" min="0" max="1" step="0.05" value="1">
+    </div>
+    <div class="field">
+      <label for="cut">Cutoff <output id="cut-o">0.50</output></label>
+      <input id="cut" type="range" min="0.05" max="0.95" step="0.01" value="0.5">
+    </div>
+    <p class="note" id="mech-note"></p>
+  </div>
+
+  <div class="panel explain">
+    <h2>What the real experiments found</h2>
+    <p class="note">Pre-registered runs, 3 seeds × 1000 splits, CPU random-forest backbone. These are recorded results, not computed live.</p>
+    <div class="ctrls"><span class="seg" id="ds-seg" role="group" aria-label="Dataset"></span><span class="seg" id="ra-seg" role="group" aria-label="Alpha for recorded results"></span></div>
+    <div class="tbl" id="real-table"></div>
+    <div id="real-verdict" class="ctrls"></div>
+    <p class="note">Every method met its guarantee. Joint lesion control cost at most 0.7% over pixel-only control and beat Learn-Then-Test and morphological sets. On these data lesion-equalized sets tied thresholding, because the pixel constraint binds and the backbone is weak.</p>
+  </div>
+</section>
+
+<footer>How this demo works: each scan is 64×64. Lesions are Gaussian bumps with disc-shaped ground truth, plus false-candidate noise bumps. The 300 scans are split 60 / 120 / 120 into tune, calibrate and test. Thresholding is calibrated on tune + calibrate. The lesion-equalized family is picked on tune from 9 candidates and calibrated on calibrate only. Thresholds come from split conformal risk control, (n·R̂ + 1)/(n + 1) ≤ α, on a 201-point grid, taking the largest threshold across the three risks. A lesion is found when at least 50% of it is in the set. Small means below the 33rd percentile of lesion areas.</footer>
+</div>
+
+<script type="application/json" id="data">{"real":[{"dataset":"fracatlas","dice":0.05686845447434687,"meta":{"n_units":719,"n_multi":159,"n_with_small":234,"small_cut_px":104.0,"reps":1000},"verdicts":{"H1":"INCONCLUSIVE","H2":{"0.05":"FAILED","0.1":"FAILED","0.15":"FAILED"}},"rows":[{"alpha":0.05,"method":"ltt_threshold","risk_pix":0.0159,"risk_les":0.01,"risk_small":0.0177,"risk_les_multi":0.0157,"set_to_truth":54.1572,"set_to_truth_lo":39.2787,"set_to_truth_hi":68.3996,"rel":0.4562,"rel_lo":0.1377,"rel_hi":0.7866,"p_smaller":0.0},{"alpha":0.05,"method":"max_threshold","risk_pix":0.0394,"risk_les":0.0254,"risk_small":0.0284,"risk_les_multi":0.0321,"set_to_truth":39.3775,"set_to_truth_lo":35.3279,"set_to_truth_hi":43.6901,"rel":0.0606,"rel_lo":0.0135,"rel_hi":0.0916,"p_smaller":0.015},{"alpha":0.05,"method":"ours_max","risk_pix":0.039,"risk_les":0.0249,"risk_small":0.0283,"risk_les_multi":0.032,"set_to_truth":39.6479,"set_to_truth_lo":34.8696,"set_to_truth_hi":44.8646,"rel":0.0679,"rel_lo":-0.0205,"rel_hi":0.149,"p_smaller":0.0583},{"alpha":0.05,"method":"ours_union","risk_pix":0.0437,"risk_les":0.0289,"risk_small":0.0333,"risk_les_multi":0.0378,"set_to_truth":38.496,"set_to_truth_lo":33.2492,"set_to_truth_hi":50.3232,"rel":0.0362,"rel_lo":-0.0597,"rel_hi":0.3293,"p_smaller":0.3133},{"alpha":0.05,"method":"pixel_crc","risk_pix":0.0481,"risk_les":0.032,"risk_small":0.036,"risk_les_multi":0.0414,"set_to_truth":36.8822,"set_to_truth_lo":33.187,"set_to_truth_hi":40.8344,"rel":-0.0067,"rel_lo":-0.0543,"rel_hi":0.0,"p_smaller":0.1903},{"alpha":0.05,"method":"union_dilation","risk_pix":0.041,"risk_les":0.0291,"risk_small":0.0356,"risk_les_multi":0.0408,"set_to_truth":39.0109,"set_to_truth_lo":35.02,"set_to_truth_hi":44.7017,"rel":0.0505,"rel_lo":0.0025,"rel_hi":0.1287,"p_smaller":0.033},{"alpha":0.05,"method":"union_stratified","risk_pix":0.0353,"risk_les":0.0229,"risk_small":0.0281,"risk_les_multi":0.0309,"set_to_truth":43.2185,"set_to_truth_lo":36.2175,"set_to_truth_hi":49.5046,"rel":0.1638,"rel_lo":0.0383,"rel_hi":0.2805,"p_smaller":0.0},{"alpha":0.05,"method":"union_threshold","risk_pix":0.0471,"risk_les":0.0313,"risk_small":0.0352,"risk_les_multi":0.0404,"set_to_truth":37.1381,"set_to_truth_lo":33.4471,"set_to_truth_hi":41.4072,"rel":0.0,"rel_lo":0.0,"rel_hi":0.0,"p_smaller":0.0},{"alpha":0.1,"method":"ltt_threshold","risk_pix":0.0618,"risk_les":0.0449,"risk_small":0.0521,"risk_les_multi":0.0614,"set_to_truth":33.8409,"set_to_truth_lo":29.0289,"set_to_truth_hi":38.5518,"rel":0.2152,"rel_lo":0.1285,"rel_hi":0.3474,"p_smaller":0.0},{"alpha":0.1,"method":"max_threshold","risk_pix":0.0791,"risk_les":0.0604,"risk_small":0.0636,"risk_les_multi":0.0848,"set_to_truth":30.5213,"set_to_truth_lo":27.3202,"set_to_truth_hi":34.0309,"rel":0.096,"rel_lo":0.0583,"rel_hi":0.1249,"p_smaller":0.0023},{"alpha":0.1,"method":"ours_max","risk_pix":0.0788,"risk_les":0.06,"risk_small":0.0628,"risk_les_multi":0.084,"set_to_truth":30.6772,"set_to_truth_lo":26.8075,"set_to_truth_hi":35.0188,"rel":0.1016,"rel_lo":0.009,"rel_hi":0.1936,"p_smaller":0.0147},{"alpha":0.1,"method":"ours_union","risk_pix":0.0945,"risk_les":0.0732,"risk_small":0.0722,"risk_les_multi":0.1089,"set_to_truth":28.3422,"set_to_truth_lo":24.8451,"set_to_truth_hi":33.3221,"rel":0.0176,"rel_lo":-0.0605,"rel_hi":0.1622,"p_smaller":0.389},{"alpha":0.1,"method":"pixel_crc","risk_pix":0.0977,"risk_les":0.0757,"risk_small":0.0729,"risk_les_multi":0.1142,"set_to_truth":27.7886,"set_to_truth_lo":25.0168,"set_to_truth_hi":30.8036,"rel":-0.0019,"rel_lo":-0.0303,"rel_hi":0.0,"p_smaller":0.045},{"alpha":0.1,"method":"union_dilation","risk_pix":0.0681,"risk_les":0.0503,"risk_small":0.0567,"risk_les_multi":0.0675,"set_to_truth":32.3589,"set_to_truth_lo":29.9659,"set_to_truth_hi":35.0426,"rel":0.1638,"rel_lo":0.0849,"rel_hi":0.2352,"p_smaller":0.0},{"alpha":0.1,"method":"union_stratified","risk_pix":0.083,"risk_les":0.0603,"risk_small":0.0705,"risk_les_multi":0.084,"set_to_truth":30.8409,"set_to_truth_lo":27.0845,"set_to_truth_hi":35.6561,"rel":0.1074,"rel_lo":0.0382,"rel_hi":0.2251,"p_smaller":0.0017},{"alpha":0.1,"method":"union_threshold","risk_pix":0.0973,"risk_les":0.0754,"risk_small":0.0728,"risk_les_multi":0.1135,"set_to_truth":27.8479,"set_to_truth_lo":25.0262,"set_to_truth_hi":31.0952,"rel":0.0,"rel_lo":0.0,"rel_hi":0.0,"p_smaller":0.0},{"alpha":0.15,"method":"ltt_threshold","risk_pix":0.1126,"risk_les":0.0883,"risk_small":0.0865,"risk_les_multi":0.1378,"set_to_truth":26.0712,"set_to_truth_lo":23.0677,"set_to_truth_hi":30.5266,"rel":0.149,"rel_lo":0.1125,"rel_hi":0.2829,"p_smaller":0.0},{"alpha":0.15,"method":"max_threshold","risk_pix":0.1237,"risk_les":0.0976,"risk_small":0.0958,"risk_les_multi":0.1547,"set_to_truth":24.8373,"set_to_truth_lo":22.1883,"set_to_truth_hi":27.7492,"rel":0.0948,"rel_lo":0.0587,"rel_hi":0.1211,"p_smaller":0.0013},{"alpha":0.15,"method":"ours_max","risk_pix":0.1231,"risk_les":0.0969,"risk_small":0.0954,"risk_les_multi":0.1527,"set_to_truth":24.9355,"set_to_truth_lo":21.802,"set_to_truth_hi":28.442,"rel":0.0992,"rel_lo":0.0126,"rel_hi":0.1859,"p_smaller":0.012},{"alpha":0.15,"method":"ours_union","risk_pix":0.1445,"risk_les":0.1137,"risk_small":0.1181,"risk_les_multi":0.1825,"set_to_truth":22.8957,"set_to_truth_lo":20.1618,"set_to_truth_hi":26.1317,"rel":0.0093,"rel_lo":-0.0625,"rel_hi":0.0969,"p_smaller":0.411},{"alpha":0.15,"method":"pixel_crc","risk_pix":0.1474,"risk_les":0.1162,"risk_small":0.1222,"risk_les_multi":0.1884,"set_to_truth":22.6111,"set_to_truth_lo":20.3304,"set_to_truth_hi":25.1638,"rel":-0.0031,"rel_lo":-0.0266,"rel_hi":0.0,"p_smaller":0.115},{"alpha":0.15,"method":"union_dilation","risk_pix":0.0681,"risk_les":0.0504,"risk_small":0.0567,"risk_les_multi":0.0675,"set_to_truth":32.3487,"set_to_truth_lo":29.9659,"set_to_truth_hi":35.0191,"rel":0.4281,"rel_lo":0.3415,"rel_hi":0.5228,"p_smaller":0.0},{"alpha":0.15,"method":"union_stratified","risk_pix":0.1314,"risk_les":0.1013,"risk_small":0.1133,"risk_les_multi":0.1526,"set_to_truth":24.961,"set_to_truth_lo":22.1887,"set_to_truth_hi":28.2075,"rel":0.1004,"rel_lo":0.0514,"rel_hi":0.1754,"p_smaller":0.0},{"alpha":0.15,"method":"union_threshold","risk_pix":0.1466,"risk_les":0.1155,"risk_small":0.1214,"risk_les_multi":0.1872,"set_to_truth":22.6844,"set_to_truth_lo":20.3446,"set_to_truth_hi":25.2608,"rel":0.0,"rel_lo":0.0,"rel_hi":0.0,"p_smaller":0.0}],"gap":[{"alpha":0.05,"G":0.64,"G_lo":0.263,"G_hi":1.143,"G_multi":0.827,"G_multi_lo":0.217,"G_multi_hi":1.636,"G_small":0.719,"G_small_lo":0.138,"G_small_hi":1.459,"n_cal_multi":95.039,"n_cal_small":139.867},{"alpha":0.1,"G":0.757,"G_lo":0.462,"G_hi":1.092,"G_multi":1.142,"G_multi_lo":0.588,"G_multi_hi":1.763,"G_small":0.729,"G_small_lo":0.327,"G_small_hi":1.217,"n_cal_multi":95.039,"n_cal_small":139.867},{"alpha":0.15,"G":0.774,"G_lo":0.529,"G_hi":1.021,"G_multi":1.256,"G_multi_lo":0.784,"G_multi_hi":1.768,"G_small":0.815,"G_small_lo":0.437,"G_small_hi":1.228,"n_cal_multi":95.039,"n_cal_small":139.867}]},{"dataset":"kvasir-seg","dice":0.41321436397658734,"meta":{"n_units":1000,"n_multi":48,"n_with_small":312,"small_cut_px":3774.1400000000003,"reps":1000},"verdicts":{"H1":"PROCEED","H2":{"0.05":"FAILED","0.1":"FAILED","0.15":"FAILED"}},"rows":[{"alpha":0.05,"method":"ltt_threshold","risk_pix":0.0238,"risk_les":0.0084,"risk_small":0.0214,"risk_les_multi":0.0337,"set_to_truth":4.2619,"set_to_truth_lo":3.7993,"set_to_truth_hi":4.6973,"rel":0.1381,"rel_lo":0.0725,"rel_hi":0.2061,"p_smaller":0.0},{"alpha":0.05,"method":"max_threshold","risk_pix":0.0416,"risk_les":0.018,"risk_small":0.0336,"risk_les_multi":0.0422,"set_to_truth":3.8557,"set_to_truth_lo":3.5642,"set_to_truth_hi":4.15,"rel":0.0297,"rel_lo":-0.0062,"rel_hi":0.044,"p_smaller":0.0343},{"alpha":0.05,"method":"ours_max","risk_pix":0.0412,"risk_les":0.017,"risk_small":0.0318,"risk_les_multi":0.0432,"set_to_truth":3.8657,"set_to_truth_lo":3.5528,"set_to_truth_hi":4.1899,"rel":0.0324,"rel_lo":-0.0164,"rel_hi":0.0712,"p_smaller":0.0733},{"alpha":0.05,"method":"ours_union","risk_pix":0.0455,"risk_les":0.0183,"risk_small":0.0344,"risk_les_multi":0.0474,"set_to_truth":3.793,"set_to_truth_lo":3.4559,"set_to_truth_hi":4.3262,"rel":0.0128,"rel_lo":-0.0355,"rel_hi":0.119,"p_smaller":0.3513},{"alpha":0.05,"method":"pixel_crc","risk_pix":0.0487,"risk_les":0.02,"risk_small":0.0366,"risk_les_multi":0.0477,"set_to_truth":3.7309,"set_to_truth_lo":3.4578,"set_to_truth_hi":4.0173,"rel":-0.0036,"rel_lo":-0.0434,"rel_hi":0.0,"p_smaller":0.1247},{"alpha":0.05,"method":"union_dilation","risk_pix":0.0458,"risk_les":0.0217,"risk_small":0.0398,"risk_les_multi":0.0582,"set_to_truth":3.7797,"set_to_truth_lo":3.4859,"set_to_truth_hi":4.0826,"rel":0.0094,"rel_lo":-0.0183,"rel_hi":0.037,"p_smaller":0.181},{"alpha":0.05,"method":"union_stratified","risk_pix":0.0405,"risk_les":0.0096,"risk_small":0.0264,"risk_les_multi":0.0718,"set_to_truth":3.8139,"set_to_truth_lo":3.4887,"set_to_truth_hi":4.1753,"rel":0.0186,"rel_lo":-0.0307,"rel_hi":0.0816,"p_smaller":0.3187},{"alpha":0.05,"method":"union_threshold","risk_pix":0.0479,"risk_les":0.0197,"risk_small":0.0364,"risk_les_multi":0.0476,"set_to_truth":3.7449,"set_to_truth_lo":3.4601,"set_to_truth_hi":4.0747,"rel":0.0,"rel_lo":0.0,"rel_hi":0.0,"p_smaller":0.0},{"alpha":0.1,"method":"ltt_threshold","risk_pix":0.0714,"risk_les":0.0317,"risk_small":0.0558,"risk_les_multi":0.0977,"set_to_truth":3.4021,"set_to_truth_lo":3.1005,"set_to_truth_hi":3.7523,"rel":0.1019,"rel_lo":0.0747,"rel_hi":0.1735,"p_smaller":0.0},{"alpha":0.1,"method":"max_threshold","risk_pix":0.0843,"risk_les":0.0391,"risk_small":0.0667,"risk_les_multi":0.1258,"set_to_truth":3.2409,"set_to_truth_lo":2.9954,"set_to_truth_hi":3.4965,"rel":0.0498,"rel_lo":0.0325,"rel_hi":0.0623,"p_smaller":0.0003},{"alpha":0.1,"method":"ours_max","risk_pix":0.0834,"risk_les":0.0384,"risk_small":0.0665,"risk_les_multi":0.1263,"set_to_truth":3.2524,"set_to_truth_lo":2.983,"set_to_truth_hi":3.528,"rel":0.0535,"rel_lo":0.0137,"rel_hi":0.0916,"p_smaller":0.0047},{"alpha":0.1,"method":"ours_union","risk_pix":0.0962,"risk_les":0.0486,"risk_small":0.0803,"risk_les_multi":0.1529,"set_to_truth":3.1077,"set_to_truth_lo":2.8352,"set_to_truth_hi":3.4103,"rel":0.0066,"rel_lo":-0.0328,"rel_hi":0.062,"p_smaller":0.3943},{"alpha":0.1,"method":"pixel_crc","risk_pix":0.0988,"risk_les":0.0506,"risk_small":0.0816,"risk_les_multi":0.1555,"set_to_truth":3.0829,"set_to_truth_lo":2.8482,"set_to_truth_hi":3.3269,"rel":-0.0014,"rel_lo":-0.0181,"rel_hi":0.0,"p_smaller":0.0927},{"alpha":0.1,"method":"union_dilation","risk_pix":0.0928,"risk_les":0.0497,"risk_small":0.0806,"risk_les_multi":0.1468,"set_to_truth":3.1367,"set_to_truth_lo":2.8818,"set_to_truth_hi":3.4183,"rel":0.016,"rel_lo":-0.0036,"rel_hi":0.0449,"p_smaller":0.1213},{"alpha":0.1,"method":"union_stratified","risk_pix":0.092,"risk_les":0.037,"risk_small":0.0657,"risk_les_multi":0.1601,"set_to_truth":3.0622,"set_to_truth_lo":2.8071,"set_to_truth_hi":3.3447,"rel":-0.008,"rel_lo":-0.0467,"rel_hi":0.0497,"p_smaller":0.6963},{"alpha":0.1,"method":"union_threshold","risk_pix":0.0984,"risk_les":0.0503,"risk_small":0.0813,"risk_les_multi":0.1547,"set_to_truth":3.0873,"set_to_truth_lo":2.8506,"set_to_truth_hi":3.3378,"rel":0.0,"rel_lo":0.0,"rel_hi":0.0,"p_smaller":0.0},{"alpha":0.15,"method":"ltt_threshold","risk_pix":0.116,"risk_les":0.0633,"risk_small":0.0972,"risk_les_multi":0.1799,"set_to_truth":2.9177,"set_to_truth_lo":2.6387,"set_to_truth_hi":3.2339,"rel":0.107,"rel_lo":0.0755,"rel_hi":0.1795,"p_smaller":0.0},{"alpha":0.15,"method":"max_threshold","risk_pix":0.1244,"risk_les":0.0697,"risk_small":0.1029,"risk_les_multi":0.1874,"set_to_truth":2.8385,"set_to_truth_lo":2.6145,"set_to_truth_hi":3.0777,"rel":0.0772,"rel_lo":0.063,"rel_hi":0.091,"p_smaller":0.0},{"alpha":0.15,"method":"ours_max","risk_pix":0.1234,"risk_les":0.0691,"risk_small":0.1023,"risk_les_multi":0.1875,"set_to_truth":2.8426,"set_to_truth_lo":2.5923,"set_to_truth_hi":3.1067,"rel":0.0787,"rel_lo":0.037,"rel_hi":0.1214,"p_smaller":0.0003},{"alpha":0.15,"method":"ours_union","risk_pix":0.1469,"risk_les":0.0898,"risk_small":0.118,"risk_les_multi":0.2192,"set_to_truth":2.6429,"set_to_truth_lo":2.4046,"set_to_truth_hi":2.9063,"rel":0.0028,"rel_lo":-0.0361,"rel_hi":0.0586,"p_smaller":0.478},{"alpha":0.15,"method":"pixel_crc","risk_pix":0.1488,"risk_les":0.0927,"risk_small":0.1216,"risk_les_multi":0.2241,"set_to_truth":2.6339,"set_to_truth_lo":2.4259,"set_to_truth_hi":2.8547,"rel":-0.0005,"rel_lo":-0.0045,"rel_hi":0.0,"p_smaller":0.032},{"alpha":0.15,"method":"union_dilation","risk_pix":0.1358,"risk_les":0.0812,"risk_small":0.1107,"risk_les_multi":0.2063,"set_to_truth":2.7446,"set_to_truth_lo":2.4903,"set_to_truth_hi":3.1328,"rel":0.0409,"rel_lo":0.0,"rel_hi":0.1136,"p_smaller":0.0},{"alpha":0.15,"method":"union_stratified","risk_pix":0.1421,"risk_les":0.0755,"risk_small":0.1014,"risk_les_multi":0.2234,"set_to_truth":2.5884,"set_to_truth_lo":2.3776,"set_to_truth_hi":2.8176,"rel":-0.0177,"rel_lo":-0.0541,"rel_hi":0.0295,"p_smaller":0.812},{"alpha":0.15,"method":"union_threshold","risk_pix":0.1486,"risk_les":0.0925,"risk_small":0.1215,"risk_les_multi":0.2239,"set_to_truth":2.6354,"set_to_truth_lo":2.4261,"set_to_truth_hi":2.8559,"rel":0.0,"rel_lo":0.0,"rel_hi":0.0,"p_smaller":0.0}],"gap":[{"alpha":0.05,"G":0.399,"G_lo":0.191,"G_hi":0.642,"G_multi":0.954,"G_multi_lo":0.0,"G_multi_hi":2.243,"G_small":0.732,"G_small_lo":0.261,"G_small_hi":1.28,"n_cal_multi":28.791,"n_cal_small":187.258},{"alpha":0.1,"G":0.506,"G_lo":0.311,"G_hi":0.727,"G_multi":1.555,"G_multi_lo":0.659,"G_multi_hi":2.524,"G_small":0.816,"G_small_lo":0.424,"G_small_hi":1.239,"n_cal_multi":28.791,"n_cal_small":187.258},{"alpha":0.15,"G":0.618,"G_lo":0.425,"G_hi":0.814,"G_multi":1.494,"G_multi_lo":0.724,"G_multi_hi":2.281,"G_small":0.811,"G_small_lo":0.492,"G_small_hi":1.134,"n_cal_multi":28.791,"n_cal_small":187.258}]}],"sim":{"verdict":"FAILED","rows":[{"gamma":0.0,"background":0.05,"alpha":0.05,"rel":-0.04032590150089156,"lo":-0.05532786602596198,"hi":-0.02426158855807464,"p_smaller":1.0},{"gamma":0.0,"background":0.05,"alpha":0.1,"rel":-0.021032041601009157,"lo":-0.03067917577464042,"hi":-0.010501475544211002,"p_smaller":0.998},{"gamma":0.0,"background":0.05,"alpha":0.15,"rel":-0.01338445088134771,"lo":-0.0246873694014479,"hi":-0.0024376686647932747,"p_smaller":0.988},{"gamma":0.0,"background":0.15,"alpha":0.05,"rel":-0.03646264965877441,"lo":-0.04916561115572341,"hi":-0.021869527703967117,"p_smaller":1.0},{"gamma":0.0,"background":0.15,"alpha":0.1,"rel":-0.026355716854859282,"lo":-0.03908584024134671,"hi":-0.013043324603481603,"p_smaller":1.0},{"gamma":0.0,"background":0.15,"alpha":0.15,"rel":-0.020412558189526572,"lo":-0.034695951255323716,"hi":-0.005903893949501006,"p_smaller":1.0},{"gamma":0.5,"background":0.05,"alpha":0.05,"rel":-0.25669732899097764,"lo":-0.4723492973274279,"hi":-0.11222859250214207,"p_smaller":0.998},{"gamma":0.5,"background":0.05,"alpha":0.1,"rel":-0.4184372886944109,"lo":-0.4820816832187046,"hi":0.026778304565643878,"p_smaller":0.934},{"gamma":0.5,"background":0.05,"alpha":0.15,"rel":-0.40038090220114464,"lo":-0.5193855276514806,"hi":0.0019414992856052454,"p_smaller":0.972},{"gamma":0.5,"background":0.15,"alpha":0.05,"rel":-0.33525775882829284,"lo":-0.4722839184083433,"hi":-0.18341174284539963,"p_smaller":0.99},{"gamma":0.5,"background":0.15,"alpha":0.1,"rel":-0.47153747386271844,"lo":-0.5004049686065897,"hi":-0.398112971930782,"p_smaller":0.982},{"gamma":0.5,"background":0.15,"alpha":0.15,"rel":-0.38136804140545144,"lo":-0.5020972369656086,"hi":0.05555080581829784,"p_smaller":0.906},{"gamma":1.0,"background":0.05,"alpha":0.05,"rel":-0.19848153915452266,"lo":-0.32840835492180676,"hi":0.05801072609293365,"p_smaller":0.928},{"gamma":1.0,"background":0.05,"alpha":0.1,"rel":-0.3068623352674481,"lo":-0.40647991496405556,"hi":-0.18705208454486505,"p_smaller":1.0},{"gamma":1.0,"background":0.05,"alpha":0.15,"rel":-0.4498839781173564,"lo":-0.6778634795579455,"hi":-0.27141126224053314,"p_smaller":1.0},{"gamma":1.0,"background":0.15,"alpha":0.05,"rel":-0.0015283337913107311,"lo":-0.23363448643052717,"hi":0.23337322845070732,"p_smaller":0.486},{"gamma":1.0,"background":0.15,"alpha":0.1,"rel":-0.020791487880158565,"lo":-0.2809982088251109,"hi":0.24971428751305058,"p_smaller":0.542},{"gamma":1.0,"background":0.15,"alpha":0.15,"rel":0.040060203086784145,"lo":-0.33618650415742224,"hi":0.5241316592252852,"p_smaller":0.43},{"gamma":1.5,"background":0.05,"alpha":0.05,"rel":0.0071749995709119,"lo":-0.06078194356008244,"hi":0.06464007133916307,"p_smaller":0.154},{"gamma":1.5,"background":0.05,"alpha":0.1,"rel":-0.004581017287013443,"lo":-0.35531613873341933,"hi":0.24263537020544385,"p_smaller":0.24},{"gamma":1.5,"background":0.05,"alpha":0.15,"rel":-0.006737444261751088,"lo":-0.23276534730878343,"hi":0.3932055864784656,"p_smaller":0.58},{"gamma":1.5,"background":0.15,"alpha":0.05,"rel":0.007439460243246437,"lo":-0.05770069393392383,"hi":0.059622846056964836,"p_smaller":0.334},{"gamma":1.5,"background":0.15,"alpha":0.1,"rel":0.012109248436306966,"lo":-0.06406823116087744,"hi":0.09299646258348665,"p_smaller":0.332},{"gamma":1.5,"background":0.15,"alpha":0.15,"rel":0.013250278781763505,"lo":-0.06855581142446487,"hi":0.09661638151453952,"p_smaller":0.334},{"gamma":2.0,"background":0.05,"alpha":0.05,"rel":0.007793177390007701,"lo":-0.054445619713782256,"hi":0.058938668943498446,"p_smaller":0.044},{"gamma":2.0,"background":0.05,"alpha":0.1,"rel":-0.004697184962483309,"lo":-0.05882649819167585,"hi":0.0,"p_smaller":0.106},{"gamma":2.0,"background":0.05,"alpha":0.15,"rel":0.0030044036806607588,"lo":-0.06163966557491256,"hi":0.06236316037494075,"p_smaller":0.044},{"gamma":2.0,"background":0.15,"alpha":0.05,"rel":0.018313283275741443,"lo":-0.0391400150245811,"hi":0.08457772080752345,"p_smaller":0.188},{"gamma":2.0,"background":0.15,"alpha":0.1,"rel":0.009163489565283452,"lo":-0.02224894739416007,"hi":0.05355434897347169,"p_smaller":0.234},{"gamma":2.0,"background":0.15,"alpha":0.15,"rel":0.008424889400675699,"lo":-0.028056650908205197,"hi":0.05361236900455564,"p_smaller":0.258}]},"diag":[{"gamma":0.0,"background":0.05,"frac_lesions_below_t0":0.0,"frac_small_lesions_below_t0":0.0,"frac_small_lesions_not_above_background_p99":0.0},{"gamma":0.0,"background":0.15,"frac_lesions_below_t0":0.0,"frac_small_lesions_below_t0":0.0,"frac_small_lesions_not_above_background_p99":0.0},{"gamma":0.5,"background":0.05,"frac_lesions_below_t0":0.0,"frac_small_lesions_below_t0":0.0,"frac_small_lesions_not_above_background_p99":0.11904761904761904},{"gamma":0.5,"background":0.15,"frac_lesions_below_t0":0.0,"frac_small_lesions_below_t0":0.0,"frac_small_lesions_not_above_background_p99":0.12439024390243902},{"gamma":1.0,"background":0.05,"frac_lesions_below_t0":0.0007220216606498195,"frac_small_lesions_below_t0":0.0026595744680851063,"frac_small_lesions_not_above_background_p99":0.5797872340425532},{"gamma":1.0,"background":0.15,"frac_lesions_below_t0":0.0,"frac_small_lesions_below_t0":0.0,"frac_small_lesions_not_above_background_p99":0.5343511450381679},{"gamma":1.5,"background":0.05,"frac_lesions_below_t0":0.02849002849002849,"frac_small_lesions_below_t0":0.0975609756097561,"frac_small_lesions_not_above_background_p99":0.7560975609756098},{"gamma":1.5,"background":0.15,"frac_lesions_below_t0":0.0,"frac_small_lesions_below_t0":0.0,"frac_small_lesions_not_above_background_p99":0.8313253012048193},{"gamma":2.0,"background":0.05,"frac_lesions_below_t0":0.08958485069191552,"frac_small_lesions_below_t0":0.3104325699745547,"frac_small_lesions_not_above_background_p99":0.8651399491094147},{"gamma":2.0,"background":0.15,"frac_lesions_below_t0":0.0,"frac_small_lesions_below_t0":0.0,"frac_small_lesions_not_above_background_p99":0.9222797927461139}],"e8":{"fracatlas":[{"alpha":0.05,"thr_joint3_str":37.1381,"thr_joint3_multi":0.0404,"thr_joint4_str":37.9286,"thr_joint4_multi":0.0379,"price_of_multi":0.0217},{"alpha":0.1,"thr_joint3_str":27.8479,"thr_joint3_multi":0.1135,"thr_joint4_str":29.8938,"thr_joint4_multi":0.092,"price_of_multi":0.0741},{"alpha":0.15,"thr_joint3_str":22.6844,"thr_joint3_multi":0.1872,"thr_joint4_str":25.6965,"thr_joint4_multi":0.1433,"price_of_multi":0.1333}],"kvasir-seg":[{"alpha":0.05,"thr_joint3_str":3.7449,"thr_joint3_multi":0.0476,"thr_joint4_str":4.7997,"thr_joint4_multi":0.0244,"price_of_multi":0.2818},{"alpha":0.1,"thr_joint3_str":3.0873,"thr_joint3_multi":0.1547,"thr_joint4_str":3.5894,"thr_joint4_multi":0.076,"price_of_multi":0.1629},{"alpha":0.15,"thr_joint3_str":2.6354,"thr_joint3_multi":0.2239,"thr_joint4_str":3.2585,"thr_joint4_multi":0.1253,"price_of_multi":0.2368}]}}</script>
+<script>
+(function(){
+'use strict';
+const S=64, N=S*S, G=201, TAU=0.5, UNITS=300, NT=60, NC=120;
+const LAMS=Float32Array.from({length:G},(_,g)=>g/(G-1));
+const FAMS=[{rho:0,t0:0}].concat([0.05,0.1,0.2,0.3].flatMap(t0=>[0.5,1].map(rho=>({rho,t0}))));
+const famLabel=f=>f.rho===0?'thresholding':`ρ=${f.rho}, t₀=${f.t0}`;
+
+function rngOf(seed){let a=seed>>>0;return()=>{a|=0;a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296;};}
+function normal(r){return Math.sqrt(-2*Math.log(r()+1e-12))*Math.cos(2*Math.PI*r());}
+function poisson(r,l){const L=Math.exp(-l);let k=0,p=1;do{k++;p*=r();}while(p>L);return k-1;}
+
+function label8(mask){const lab=new Int32Array(N);let n=0;const st=new Int32Array(N);
+  for(let i=0;i<N;i++){if(!mask[i]||lab[i])continue;n++;let sp=0;st[sp++]=i;lab[i]=n;
+    while(sp){const j=st[--sp],y=(j/S)|0,x=j-y*S;
+      for(let dy=-1;dy<=1;dy++)for(let dx=-1;dx<=1;dx++){const yy=y+dy,xx=x+dx;if(yy<0||xx<0||yy>=S||xx>=S)continue;const k=yy*S+xx;if(mask[k]&&!lab[k]){lab[k]=n;st[sp++]=k;}}}}
+  return {lab,n};}
+
+function genUnit(r,gamma,b){const p=new Float32Array(N),gt=new Uint8Array(N);const RMIN=1.5,RMAX=6;
+  for(let i=0;i<N;i++)p[i]=r()*b;
+  const k=1+poisson(r,1.5);
+  for(let q=0;q<k;q++){const cy=RMAX+r()*(S-2*RMAX),cx=RMAX+r()*(S-2*RMAX),rad=RMIN+r()*(RMAX-RMIN);
+    const a=Math.min(1,Math.max(0.05,0.9*Math.pow(rad/RMAX,gamma)+0.05*normal(r)));
+    for(let y=0;y<S;y++)for(let x=0;x<S;x++){const d2=(y-cy)**2+(x-cx)**2,i=y*S+x;const v=a*Math.exp(-d2/(2*rad*rad));if(v>p[i])p[i]=v;if(d2<=rad*rad)gt[i]=1;}}
+  const nb=poisson(r,3);
+  for(let q=0;q<nb;q++){const cy=r()*S,cx=r()*S,rad=RMIN+r()*(RMAX/2-RMIN),a=0.1+r()*0.25;
+    for(let y=0;y<S;y++)for(let x=0;x<S;x++){const i=y*S+x,v=a*Math.exp(-((y-cy)**2+(x-cx)**2)/(2*rad*rad));if(v>p[i])p[i]=v;}}
+  const {lab,n}=label8(gt);const sizes=new Int32Array(n+1);for(let i=0;i<N;i++)if(lab[i])sizes[lab[i]]++;
+  return {p,lab,K:n,sizes};}
+
+function leScore(p,f){if(f.rho===0)return p;const m=new Uint8Array(N);for(let i=0;i<N;i++)m[i]=p[i]>=f.t0?1:0;
+  const {lab,n}=label8(m);const peak=new Float32Array(n+1);for(let i=0;i<N;i++)if(lab[i]&&p[i]>peak[lab[i]])peak[lab[i]]=p[i];
+  const s=new Float32Array(N);for(let i=0;i<N;i++){const l=lab[i];s[i]=l?Math.min(1,p[i]/Math.pow(Math.max(peak[l],f.t0),f.rho)):p[i];}return s;}
+
+function lb(arr,v){let lo=0,hi=arr.length;while(lo<hi){const m=(lo+hi)>>1;if(arr[m]<v)lo=m+1;else hi=m;}return lo;}
+
+function stats(s,u,smallCut){const all=Float32Array.from(s).sort();
+  const gtv=[];const comp=Array.from({length:u.K+1},()=>[]);
+  for(let i=0;i<N;i++){const l=u.lab[i];if(l){gtv.push(s[i]);comp[l].push(s[i]);}}
+  const gts=Float32Array.from(gtv).sort();
+  const q=[],qs=[];for(let l=1;l<=u.K;l++){const c=comp[l].sort((a,b)=>b-a);const v=c[Math.ceil(TAU*c.length)-1];q.push(v);if(u.sizes[l]<smallCut)qs.push(v);}
+  q.sort((a,b)=>a-b);qs.sort((a,b)=>a-b);
+  const pix=new Float32Array(G),les=new Float32Array(G),small=qs.length?new Float32Array(G):null,size=new Float32Array(G);
+  for(let g=0;g<G;g++){const c=1-LAMS[g];size[g]=N-lb(all,c);pix[g]=lb(gts,c)/gts.length;les[g]=lb(q,c)/q.length;if(small)small[g]=lb(qs,c)/qs.length;}
+  return {pix,les,small,size,nGT:gts.length,multi:u.K>=2};}
+
+function crc(units,key,alpha){const us=units.filter(u=>u[key]);const n=us.length;if(!n)return 0;
+  for(let g=0;g<G;g++){let s=0;for(const u of us)s+=u[key][g];if((s+1)/(n+1)<=alpha)return g;}return G-1;}
+const union=(us,a)=>Math.max(crc(us,'pix',a),crc(us,'les',a),crc(us,'small',a));
+function evaluate(us,g){let p=0,l=0,sm=0,ns=0,lm=0,nm=0,sz=0,gt=0;
+  for(const u of us){p+=u.pix[g];l+=u.les[g];if(u.small){sm+=u.small[g];ns++;}if(u.multi){lm+=u.les[g];nm++;}sz+=u.size[g];gt+=u.nGT;}
+  return {pix:p/us.length,les:l/us.length,small:ns?sm/ns:NaN,multi:nm?lm/nm:NaN,str:sz/gt};}
+
+let STATE=null, ALPHA=0.1, idx=0;
+const $=id=>document.getElementById(id);
+
+function run(){
+  const gamma=+$('gamma').value,b=+$('bg').value,seed=+$('seed').value;
+  $('status').textContent='Calibrating…';
+  setTimeout(()=>{const t0=performance.now();
+    const r=rngOf(seed*1009+Math.round(gamma*100)+Math.round(b*1000)*7);
+    const raw=Array.from({length:UNITS},()=>genUnit(r,gamma,b)).filter(u=>u.K>0);
+    const sizes=raw.flatMap(u=>Array.from(u.sizes.slice(1))).sort((a,b)=>a-b);
+    const smallCut=sizes[Math.floor(0.33*sizes.length)];
+    const order=raw.map((_,i)=>i);const r2=rngOf(seed*31+5);for(let i=order.length-1;i>0;i--){const j=Math.floor(r2()*(i+1));[order[i],order[j]]=[order[j],order[i]];}
+    const tune=order.slice(0,NT),cal=order.slice(NT,NT+NC),test=order.slice(NT+NC);
+    const scores=FAMS.map(f=>raw.map(u=>leScore(u.p,f)));
+    const st=FAMS.map((f,fi)=>raw.map((u,i)=>stats(scores[fi][i],u,smallCut)));
+    const pick=(fi,ids)=>ids.map(i=>st[fi][i]);
+    const res={};
+    for(const a of [0.05,0.1,0.15]){
+      const tc=tune.concat(cal);
+      const gPix=crc(pick(0,tc),'pix',a), gThr=union(pick(0,tc),a);
+      let best=0,bs=Infinity;FAMS.forEach((f,fi)=>{const tu=pick(fi,tune);const g=union(tu,a);const e=evaluate(tu,g).str;if(e<bs-1e-12){bs=e;best=fi;}});
+      const gOurs=union(pick(best,cal),a);
+      res[a]={gPix,gThr,gOurs,fam:best,pixel:evaluate(pick(0,test),gPix),thr:evaluate(pick(0,test),gThr),ours:evaluate(pick(best,test),gOurs)};}
+    STATE={raw,scores,st,test,res,smallCut,gamma,b};
+    idx=Math.min(idx,test.length-1);
+    $('status').textContent=`${raw.length} scans · ${test.length} held out · ${(performance.now()-t0).toFixed(0)} ms`;
+    renderMetrics();renderViewer();},16);
+}
+
+const fmt=(v,d=3)=>isFinite(v)?v.toFixed(d):'–';
+function renderMetrics(){const R=STATE.res[ALPHA];
+  const d=R.ours.str/R.thr.str-1;const el=$('m-delta');el.textContent=(d>0?'+':'')+(100*d).toFixed(1)+'%';
+  el.className='num '+(d<-0.005?'good':d>0.005?'badc':'');
+  const row=(name,e,cls,claims)=>{const c=k=>`<td class="${claims.includes(k)&&e[k]>ALPHA+0.005?'over':''}">${fmt(e[k])}</td>`;
+    return `<tr class="${cls}"><td>${name}</td>${c('pix')}${c('les')}${c('small')}<td class="${e.multi>ALPHA?'over':''}">${fmt(e.multi)}</td><td>${fmt(e.str,2)}</td></tr>`;};
+  $('m-table').innerHTML=`<table><thead><tr><th>Method</th><th>Pixel</th><th>Lesion</th><th>Small</th><th>K≥2</th><th>Set/GT</th></tr></thead><tbody>`+
+    row('Pixel CRC only',R.pixel,'',['pix'])+row('Joint thresholding',R.thr,'ref',['pix','les','small'])+row('Lesion-equalized',R.ours,'ours',['pix','les','small'])+`</tbody></table>`;
+  $('m-fam').innerHTML=`Columns are miss rates on held-out scans; red means above α = ${ALPHA}. Family picked on the tuning split: <b>${famLabel(FAMS[R.fam])}</b>. The K≥2 column is not guaranteed by any method here.`;}
+
+function css(n){return getComputedStyle(document.documentElement).getPropertyValue(n).trim();}
+function rgb(c){const ctx=document.createElement('canvas').getContext('2d');ctx.fillStyle=c;const h=ctx.fillStyle;if(h.startsWith('#'))return [1,3,5].map(i=>parseInt(h.slice(i,i+2),16));const m=h.match(/\d+/g);return m?m.slice(0,3).map(Number):[128,128,128];}
+function draw(canvas,u,s,cut,setCol){const ctx=canvas.getContext('2d');const img=ctx.createImageData(S,S);
+  const lo=rgb(css('--scan-lo')),hi=rgb(css('--scan-hi')),sc=setCol?rgb(setCol):null,bad=rgb(css('--bad'));
+  const found=new Uint8Array(u.K+1);
+  if(s){const cov=new Int32Array(u.K+1);for(let i=0;i<N;i++)if(u.lab[i]&&s[i]>=cut)cov[u.lab[i]]++;for(let l=1;l<=u.K;l++)found[l]=cov[l]>=TAU*u.sizes[l]?1:0;}
+  for(let i=0;i<N;i++){const v=u.p[i];let c=[0,1,2].map(k=>lo[k]+(hi[k]-lo[k])*v*(s?0.55:1));
+    if(s&&s[i]>=cut)c=c.map((x,k)=>x*0.25+sc[k]*0.75);
+    const l=u.lab[i];if(l){const y=(i/S)|0,x=i-y*S;let edge=false;for(const [dy,dx] of [[1,0],[-1,0],[0,1],[0,-1]]){const yy=y+dy,xx=x+dx;if(yy<0||xx<0||yy>=S||xx>=S||u.lab[yy*S+xx]!==l){edge=true;break;}}
+      if(edge)c=s?(found[l]?hi:bad):hi;}
+    img.data[i*4]=c[0];img.data[i*4+1]=c[1];img.data[i*4+2]=c[2];img.data[i*4+3]=255;}
+  ctx.putImageData(img,0,0);let miss=0;for(let l=1;l<=u.K;l++)if(s&&!found[l])miss++;return miss;}
+
+function renderViewer(){const R=STATE.res[ALPHA];const i=STATE.test[idx];const u=STATE.raw[i];
+  $('v-title').textContent=`Held-out scan ${idx+1} of ${STATE.test.length}`;
+  draw($('c0'),u,null,0,null);
+  const m1=draw($('c1'),u,STATE.scores[0][i],1-LAMS[R.gThr],css('--base'));
+  const m2=draw($('c2'),u,STATE.scores[R.fam][i],1-LAMS[R.gOurs],css('--accent'));
+  const sz=(fi,g)=>STATE.st[fi][i].size[g];
+  $('cap0').textContent=`${u.K} lesion${u.K>1?'s':''}`;
+  $('cap1').textContent=`${sz(0,R.gThr)} px · ${m1} missed`;
+  $('cap2').textContent=`${sz(R.fam,R.gOurs)} px · ${m2} missed`;
+  $('v-note').textContent=`Both sets carry the same guarantee at α = ${ALPHA}: on average over scans, at most ${100*ALPHA}% of lesion pixels, lesions and small lesions are missed. A single scan can still miss a lesion.`;}
+
+function hardest(){const R=STATE.res[ALPHA];let best=idx,bd=-1;
+  STATE.test.forEach((i,k)=>{const a=STATE.st[0][i].size[R.gThr],b=STATE.st[R.fam][i].size[R.gOurs];const d=Math.abs(a-b)/Math.max(STATE.st[0][i].nGT,1)+(STATE.raw[i].K>=2?0.5:0);if(d>bd&&k!==idx){bd=d;best=k;}});
+  idx=best;renderViewer();}
+
+function seg(el,items,cur,on){el.innerHTML=items.map(([v,l])=>`<button type="button" data-v="${v}" aria-pressed="${v==cur}">${l}</button>`).join('');
+  el.querySelectorAll('button').forEach(b=>b.addEventListener('click',()=>{el.querySelectorAll('button').forEach(x=>x.setAttribute('aria-pressed',x===b));on(b.dataset.v);}));}
+seg($('alpha-seg'),[['0.05','0.05'],['0.1','0.10'],['0.15','0.15']],ALPHA,v=>{ALPHA=+v;if(STATE){renderMetrics();renderViewer();}});
+for(const [id,d] of [['gamma',2],['bg',2],['seed',0]]){$(id).addEventListener('input',()=>{$(id+'-o').textContent=(+$(id).value).toFixed(d);});
+  $(id).addEventListener('change',run);}
+$('run').addEventListener('click',run);
+$('prev').addEventListener('click',()=>{if(!STATE)return;idx=(idx-1+STATE.test.length)%STATE.test.length;renderViewer();});
+$('next').addEventListener('click',()=>{if(!STATE)return;idx=(idx+1)%STATE.test.length;renderViewer();});
+$('hard').addEventListener('click',()=>{if(STATE)hardest();});
+
+// ---- mechanism explainer (1-D slice) ----
+const X=Array.from({length:281},(_,i)=>i/280);
+const rr=rngOf(3);const noise=X.map(()=>0.06*rr());
+const bump=(x,c,w,a)=>a*Math.exp(-((x-c)**2)/(2*w*w));
+const P=X.map((x,i)=>Math.max(noise[i],bump(x,0.3,0.07,0.92),bump(x,0.74,0.025,0.32),bump(x,0.55,0.012,0.13)));
+const GT=[[0.3-0.07,0.3+0.07],[0.74-0.025,0.74+0.025]];
+function mech(){const rho=+$('rho').value,cut=+$('cut').value,t0=0.1;
+  $('rho-o').textContent=rho.toFixed(2);$('cut-o').textContent=cut.toFixed(2);
+  const cand=[];let st=-1;P.forEach((v,i)=>{if(v>=t0&&st<0)st=i;if((v<t0||i===P.length-1)&&st>=0){cand.push([st,v<t0?i-1:i]);st=-1;}});
+  const Sx=P.slice();cand.forEach(([a,b])=>{let pk=0;for(let i=a;i<=b;i++)pk=Math.max(pk,P[i]);for(let i=a;i<=b;i++)Sx[i]=Math.min(1,P[i]/Math.pow(pk,rho));});
+  const W=560,H=250,L=36,R=10,T=12,B=70;const x=v=>L+(W-L-R)*v,y=v=>T+(H-T-B)*(1-v);
+  const path=a=>a.map((v,i)=>`${i?'L':'M'}${x(X[i]).toFixed(1)},${y(v).toFixed(1)}`).join('');
+  const strip=(arr,yy,col)=>{let s='',st=-1;arr.forEach((v,i)=>{const on=v>=cut;if(on&&st<0)st=i;if((!on||i===arr.length-1)&&st>=0){const e=on?i:i-1;s+=`<rect x="${x(X[st])}" y="${yy}" width="${Math.max(1,x(X[e])-x(X[st]))}" height="10" fill="${col}" rx="1"/>`;st=-1;}});return s;};
+  const found=arr=>GT.map(([a,b])=>{const idx=X.map((v,i)=>i).filter(i=>X[i]>=a&&X[i]<=b);return idx.filter(i=>arr[i]>=cut).length>=TAU*idx.length;});
+  const cov=arr=>arr.filter(v=>v>=cut).length;
+  let s=`<rect x="${x(GT[0][0])}" y="${T}" width="${x(GT[0][1])-x(GT[0][0])}" height="${H-T-B}" fill="var(--line)" opacity=".5"/><rect x="${x(GT[1][0])}" y="${T}" width="${x(GT[1][1])-x(GT[1][0])}" height="${H-T-B}" fill="var(--line)" opacity=".5"/>`;
+  [0,0.5,1].forEach(v=>s+=`<line x1="${L}" x2="${W-R}" y1="${y(v)}" y2="${y(v)}" stroke="var(--line)"/><text x="${L-6}" y="${y(v)+4}" text-anchor="end">${v}</text>`);
+  s+=`<path d="${path(P)}" fill="none" stroke="var(--muted)" stroke-width="1.4"/>`;
+  s+=`<path d="${path(Sx)}" fill="none" stroke="var(--accent)" stroke-width="2"/>`;
+  s+=`<line x1="${L}" x2="${W-R}" y1="${y(cut)}" y2="${y(cut)}" stroke="var(--fg)" stroke-dasharray="4 3"/>`;
+  s+=`<text x="${x(0.3)}" y="${T+12}" text-anchor="middle">large, confident</text><text x="${x(0.74)}" y="${T+12}" text-anchor="middle">small, faint</text><text x="${x(0.55)}" y="${y(0.13)-8}" text-anchor="middle">noise</text>`;
+  const yb=H-B+16;s+=`<text x="${L}" y="${yb-4}">thresholding set</text>`+strip(P,yb,'var(--base)');
+  s+=`<text x="${L}" y="${yb+30}">equalized set</text>`+strip(Sx,yb+34,'var(--accent)');
+  $('mech').innerHTML=s;
+  const ft=found(P),fe=found(Sx);
+  $('mech-note').innerHTML=`At this cutoff, thresholding finds ${ft.filter(Boolean).length} of 2 lesions with ${cov(P)} samples in its set. Equalized finds ${fe.filter(Boolean).length} of 2 with ${cov(Sx)}. Grey bands are the true lesions; the grey curve is the posterior, the teal curve the equalized score.`;}
+['rho','cut'].forEach(id=>$(id).addEventListener('input',mech));mech();
+
+// ---- recorded real results ----
+const D=JSON.parse($('data').textContent);
+const NAME={'fracatlas':'FracAtlas','kvasir-seg':'Kvasir-SEG'};
+const LAB={pixel_crc:'Pixel CRC',union_threshold:'Joint, thresholding',ltt_threshold:'Learn-Then-Test',union_dilation:'Morphological sets',union_stratified:'CCRA-S strata',ours_union:'Lesion-equalized'};
+let ds='kvasir-seg',ra=0.1;
+function real(){const b=D.real.find(x=>x.dataset===ds);
+  const rows=Object.keys(LAB).map(m=>b.rows.find(r=>r.method===m&&r.alpha===ra)).filter(Boolean);
+  $('real-table').innerHTML=`<table><thead><tr><th>Method</th><th>Lesion miss</th><th>Small miss</th><th>Set/GT</th><th>Δ size</th></tr></thead><tbody>`+
+    rows.map(r=>`<tr class="${r.method==='ours_union'?'ours':r.method==='union_threshold'?'ref':''}"><td>${LAB[r.method]}</td><td>${fmt(r.risk_les)}</td><td>${fmt(r.risk_small)}</td><td>${fmt(r.set_to_truth,2)}</td><td>${r.method==='union_threshold'?'ref.':(r.rel>0?'+':'')+(100*r.rel).toFixed(1)+'%'}</td></tr>`).join('')+`</tbody></table>`;
+  const p=v=>v==='PROCEED'||v==='SUPPORTED'?'ok':v==='FAILED'||v==='KILL'?'bad':'warn';
+  const h2=b.verdicts.H2[String(ra)]||Object.values(b.verdicts.H2)[0];
+  $('real-verdict').innerHTML=`<span class="pill ${p(b.verdicts.H1)}">Gap: ${b.verdicts.H1}</span><span class="pill ${p(h2)}">Equalized beats thresholding: ${h2}</span><span class="pill ok">Guarantees held</span><span class="note">${b.meta.n_units} images · backbone Dice ${fmt(b.dice)}</span>`;}
+seg($('ds-seg'),[['kvasir-seg','Kvasir-SEG'],['fracatlas','FracAtlas']],ds,v=>{ds=v;real();});
+seg($('ra-seg'),[['0.05','α 0.05'],['0.1','α 0.10'],['0.15','α 0.15']],ra,v=>{ra=+v;real();});
+real();
+
+try{matchMedia('(prefers-color-scheme: dark)').addEventListener('change',()=>{if(STATE)renderViewer();mech();});}catch(e){}
+new MutationObserver(()=>{if(STATE)renderViewer();}).observe(document.documentElement,{attributes:true,attributeFilter:['data-theme']});
+run();
+})();
+</script>
