@@ -1,0 +1,26 @@
+{
+  "dataset": "fracatlas",
+  "backbone": "rf",
+  "seed": 0,
+  "folds": 5,
+  "epochs": 40,
+  "size": 256,
+  "n_units": 719,
+  "n_negatives": 0,
+  "min_component_px_native": 10,
+  "fold_dice": [
+    0.05555910697923694,
+    0.05890629977303511,
+    0.058338259428448024,
+    0.054574735402774154,
+    0.05807009194008139
+  ],
+  "mean_dice": 0.05708969870471512,
+  "sha256": "248e5bc4b36e65d81f3f7e079cfd44c1a28487242b6958c9b61756c7f4ef35ff",
+  "seconds": 267,
+  "env": {
+    "sklearn": "1.9.0",
+    "device": "cpu",
+    "python": "3.13.0"
+  }
+}

@@ -1,0 +1,14 @@
+\begin{tabular}{lccccr}
+\toprule
+Method & pixel FNR & lesion miss & small miss & set/truth & $\Delta$ vs joint-thr. \\
+\midrule
+Pixel CRC~\cite{angelopoulos2024crc} & 0.098 & 0.076 & 0.073 & 27.79 & -0.2\% \\
+Joint, threshold & 0.097 & 0.075 & 0.073 & 27.85 & ref. \\
+Joint max-form, threshold & 0.079 & 0.060 & 0.064 & 30.52 & +9.6\% \\
+LTT~\cite{angelopoulos2021ltt}, threshold & 0.062 & 0.045 & 0.052 & 33.84 & +21.5\% \\
+Joint, morphological~\cite{mossina2025morph} & 0.068 & 0.050 & 0.057 & 32.36 & +16.4\% \\
+Joint, CCRA-S strata~\cite{luo2025ccra} & 0.083 & 0.060 & 0.071 & 30.84 & +10.7\% \\
+\textbf{Ours}, joint & 0.095 & 0.073 & 0.072 & 28.34 & +1.8\% \\
+\textbf{Ours}, max-form & 0.079 & 0.060 & 0.063 & 30.68 & +10.2\% \\
+\bottomrule
+\end{tabular}

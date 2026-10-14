@@ -314,7 +314,51 @@ Live version of this table: the **Research status** page in the app.
 | Conformal Risk Control (split, FNR loss) | ✅ Implemented |
 | Temperature scaling | ✅ Implemented |
 | Empirical threshold (no-guarantee control) | 🟡 Baseline |
-| Automatically Adaptive CRC · SACP · Localized Adaptive Risk Control · Morphological conformal · Evidential (DEviS) | ⚪ Planned — registry entries that return **501** |
+| Lesion-aware joint CRC (`lesion_aware_crc`): pixel + lesion + small-lesion risk, lesion-equalized sets | ✅ Implemented (Project-II) |
+| Morphological prediction sets, joint risks (`morphological_conformal`) | 🟡 Baseline |
+| Automatically Adaptive CRC · SACP · Localized Adaptive Risk Control · Evidential (DEviS) | ⚪ Planned — registry entries that return **501** |
+
+---
+
+## 8b. Project-II research: lesion-level joint conformal risk control
+
+**Question.** CRC guarantees pixel FNR ≤ α. Does that protect *lesions*, and
+can lesion-level risk be controlled jointly and efficiently?
+
+**Contributions.**
+1. Lesion-miss and small-lesion-miss losses on ground-truth components. They are
+   monotone under any nested set family, and are controlled jointly with pixel
+   FNR with no Bonferroni split.
+2. *Lesion-equalized* prediction sets: each candidate lesion is peak-normalised.
+   The sets are amplitude-invariant, exclude background above the candidate
+   level, and keep the guarantee when tuned on a separate split.
+
+**Pre-registered results** (FracAtlas + Kvasir-SEG, CPU random-forest backbone,
+3 seeds × 1000 splits; full tables in
+[`docs/research/results/summary.md`](docs/research/results/summary.md)):
+
+| Finding | Outcome |
+|---|---|
+| Every method met every guarantee it claims | ✅ |
+| Pixel CRC under-protects multi-lesion images | Kvasir **PROCEED** (miss rate 1.56α at α = 0.10); FracAtlas inconclusive |
+| Cost of joint lesion-level control over pixel-only CRC | ≤ 0.7% set size |
+| Joint thresholding vs Learn-Then-Test / morphological sets | 10–46% / 1–43% smaller sets |
+| Lesion-equalized sets beat joint thresholding on real data | ❌ not supported (tie) |
+| Simulation: lesion-equalized gain when small lesions are under-confident | up to −47%; ≈ 0 when lesions sink into the background (pre-registered rule: failed) |
+
+**Where things live.** The pre-registration is in
+[`docs/research/preregistration-mgcrc.md`](docs/research/preregistration-mgcrc.md),
+the theory in [`docs/research/theory-memo-v2.md`](docs/research/theory-memo-v2.md),
+and the related work in [`docs/research/related-work.md`](docs/research/related-work.md).
+The paper source is in [`paper/`](paper/) (LaTeX, LNCS; numbers are generated in
+`paper/generated/`). The VIT report and slides are in [`report/`](report/), and
+the dashboard is at `/research` → *Lesion-level CRC*.
+
+**Reproduce.** `./scripts/reproduce.ps1` (or `.sh`) runs everything on CPU, and
+`-Fast` reuses the cached posteriors. A GPU U-Net backbone is available with
+`-Backbone unet-r34 -Size 512` once PyTorch is installed. The 3-D MSD Task08
+pipeline is `backend/scripts/experiments/train_backbone_msd.py`. Both are
+implemented, but neither has been run yet.
 
 ---
 

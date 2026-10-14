@@ -1,0 +1,75 @@
+{
+  "label": "POST-HOC, not pre-registered",
+  "rows": [
+    {
+      "gamma": 0.0,
+      "background": 0.05,
+      "frac_lesions_below_t0": 0.0,
+      "frac_small_lesions_below_t0": 0.0,
+      "frac_small_lesions_not_above_background_p99": 0.0
+    },
+    {
+      "gamma": 0.0,
+      "background": 0.15,
+      "frac_lesions_below_t0": 0.0,
+      "frac_small_lesions_below_t0": 0.0,
+      "frac_small_lesions_not_above_background_p99": 0.0
+    },
+    {
+      "gamma": 0.5,
+      "background": 0.05,
+      "frac_lesions_below_t0": 0.0,
+      "frac_small_lesions_below_t0": 0.0,
+      "frac_small_lesions_not_above_background_p99": 0.11904761904761904
+    },
+    {
+      "gamma": 0.5,
+      "background": 0.15,
+      "frac_lesions_below_t0": 0.0,
+      "frac_small_lesions_below_t0": 0.0,
+      "frac_small_lesions_not_above_background_p99": 0.12439024390243902
+    },
+    {
+      "gamma": 1.0,
+      "background": 0.05,
+      "frac_lesions_below_t0": 0.0007220216606498195,
+      "frac_small_lesions_below_t0": 0.0026595744680851063,
+      "frac_small_lesions_not_above_background_p99": 0.5797872340425532
+    },
+    {
+      "gamma": 1.0,
+      "background": 0.15,
+      "frac_lesions_below_t0": 0.0,
+      "frac_small_lesions_below_t0": 0.0,
+      "frac_small_lesions_not_above_background_p99": 0.5343511450381679
+    },
+    {
+      "gamma": 1.5,
+      "background": 0.05,
+      "frac_lesions_below_t0": 0.02849002849002849,
+      "frac_small_lesions_below_t0": 0.0975609756097561,
+      "frac_small_lesions_not_above_background_p99": 0.7560975609756098
+    },
+    {
+      "gamma": 1.5,
+      "background": 0.15,
+      "frac_lesions_below_t0": 0.0,
+      "frac_small_lesions_below_t0": 0.0,
+      "frac_small_lesions_not_above_background_p99": 0.8313253012048193
+    },
+    {
+      "gamma": 2.0,
+      "background": 0.05,
+      "frac_lesions_below_t0": 0.08958485069191552,
+      "frac_small_lesions_below_t0": 0.3104325699745547,
+      "frac_small_lesions_not_above_background_p99": 0.8651399491094147
+    },
+    {
+      "gamma": 2.0,
+      "background": 0.15,
+      "frac_lesions_below_t0": 0.0,
+      "frac_small_lesions_below_t0": 0.0,
+      "frac_small_lesions_not_above_background_p99": 0.9222797927461139
+    }
+  ]
+}

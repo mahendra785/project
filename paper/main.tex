@@ -1,0 +1,50 @@
+% Lesion-level joint conformal risk control — MICCAI-style (LNCS) submission draft.
+% Compile: latexmk -pdf main.tex   (or upload the paper/ folder to Overleaf)
+% All numbers come from \input{generated/results} (written by
+% backend/scripts/experiments/paper_macros.py from docs/research/results/).
+\documentclass[runningheads]{llncs}
+\usepackage[T1]{fontenc}
+\usepackage{amsmath,amssymb}
+\usepackage{graphicx,booktabs,multirow,xcolor}
+\usepackage{pgfplots,pgfplotstable}
+\pgfplotsset{compat=1.17}
+\usepackage[hidelinks]{hyperref}
+
+\input{generated/results}
+
+\begin{document}
+\title{Pixel Guarantees Hide Missed Lesions:\\Lesion-Level Joint Conformal Risk Control\\with Lesion-Equalized Prediction Sets}
+\titlerunning{Lesion-Level Joint Conformal Risk Control}
+\author{Mahendra Sajjan Choudhary \and Vansh Bhatiya \and Shashank Mouli Satapathy}
+\authorrunning{M. S. Choudhary et al.}
+\institute{School of Computer Science and Engineering, Vellore Institute of Technology, Vellore, India}
+\maketitle
+
+\begin{abstract}
+Conformal risk control gives segmentation models a finite-sample bound on the
+pixel false-negative rate. That bound is carried by large lesions and says
+nothing about whether small lesions are found. We define lesion-miss and
+small-lesion-miss risks on ground-truth connected components, prove they are
+monotone under any nested prediction-set family, and control them
+simultaneously with pixel FNR in expectation, with no Bonferroni split. We then
+show that thresholding is an inefficient family for a lesion risk, because the
+least confident lesion sets the global cutoff. We propose
+\emph{lesion-equalized} prediction sets, which peak-normalise every candidate
+lesion. The family is amplitude-invariant and excludes background above the
+candidate level, and choosing it on a tuning split preserves the guarantee
+exactly. In a pre-registered evaluation on FracAtlas and Kvasir-SEG with six
+baselines, and in a controlled simulation: \ResultAbstract
+\keywords{Conformal risk control \and Segmentation \and Lesion detection \and Uncertainty quantification}
+\end{abstract}
+
+\input{sections/intro}
+\input{sections/related}
+\input{sections/method}
+\input{sections/experiments}
+
+\bibliographystyle{splncs04}
+\bibliography{refs}
+
+\appendix
+\input{sections/appendix}
+\end{document}

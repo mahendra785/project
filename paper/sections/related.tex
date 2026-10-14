@@ -1,0 +1,30 @@
+\section{Related work}
+
+\paragraph{Risk control for segmentation.}
+CRC~\cite{angelopoulos2024crc} bounds the expectation of any monotone bounded
+loss, and segmentation examples use pixel FNR. CLS~\cite{tan2025cls} calibrates
+a per-volume voxel-FNR tolerance with a high-probability guarantee. Despite its
+lesion-level motivation, its loss is a voxel fraction, so a missed small lesion
+weighs in proportion to its volume. CRA/CCRA/CCRA-S~\cite{luo2025ccra} and
+ReCIRC~\cite{recirc2026} target image-conditional pixel risk through adaptive
+scores, strata or per-input budgets. Per-organ recall control~\cite{perorgan2026}
+calibrates voxel FNR per organ, with Bonferroni across organs. FDR control for
+instance segmentation~\cite{fdr2025} controls pixel FDR or FNR, one at a time.
+None of these defines the loss on ground-truth components or controls several
+granularities jointly.
+
+\paragraph{Structured prediction sets.}
+Morphological prediction sets~\cite{mossina2025morph} replace thresholding with
+dilations of the predicted mask, and a follow-up controls false positives by
+erosion~\cite{mossina2025fp}. Both change the nested family to suit
+\emph{containment}. We change it to suit a \emph{lesion} loss, and we include
+dilation as a baseline.
+
+\paragraph{Multiple risks.}
+Learn-Then-Test~\cite{angelopoulos2021ltt} controls many risks with
+family-wise error control and needs no monotonicity, at the cost of a
+high-probability guarantee and more conservative thresholds. Andéol et
+al.~\cite{andeol2023} use box-wise recall for detection, one risk at a time.
+Our joint guarantee is the special case where all losses are monotone and only
+expectation control is required. It is simpler and tighter, and we measure the
+difference.

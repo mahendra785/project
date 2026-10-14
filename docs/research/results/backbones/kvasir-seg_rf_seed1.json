@@ -1,0 +1,26 @@
+{
+  "dataset": "kvasir-seg",
+  "backbone": "rf",
+  "seed": 1,
+  "folds": 5,
+  "epochs": 40,
+  "size": 256,
+  "n_units": 1000,
+  "n_negatives": 0,
+  "min_component_px_native": 10,
+  "fold_dice": [
+    0.422148212770477,
+    0.40509707961362834,
+    0.41316557123961545,
+    0.4242208513333884,
+    0.4005082630502694
+  ],
+  "mean_dice": 0.4130279956014757,
+  "sha256": "d88cb820cc4020d74f93833fa991574084a9a9a7ada11885b6cdcfde491b5e6f",
+  "seconds": 296,
+  "env": {
+    "sklearn": "1.9.0",
+    "device": "cpu",
+    "python": "3.13.0"
+  }
+}
