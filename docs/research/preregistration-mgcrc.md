@@ -108,3 +108,103 @@ families and metric as the main protocol.
 **Decision rule.** The mechanism is supported if `ours_union` vs
 `union_threshold` is < 0 with P(smaller) ≥ 0.95 at γ ≥ 1 for both b, **and**
 the advantage at γ = 2 is larger than at γ = 0. It fails otherwise.
+
+---
+
+## Amendment 3 — 2026-10-20, revision protocol (registered before any revised result)
+
+**Trigger.** An external pre-submission review (2026-10-19) required: (i) a protocol
+whose assumptions match the conformal guarantee exactly; (ii) a competent
+deep-learning backbone, a second backbone, and pre-CRC segmentation metrics;
+(iii) fair baselines with equal calibration data; (iv) statistically valid
+uncertainty for overlapping splits; (v) the multi-lesion analysis either labelled
+exploratory or validated under a pre-specified protocol. Everything in this
+amendment is fixed before any posterior from the revised pipeline exists. All
+earlier results (random forest, cross-fitting) are kept, unchanged, and reported
+as the *preliminary* study.
+
+**Disclosure.** No revised posterior, statistic or figure has been computed when
+this amendment is written. PyTorch had just been installed; the only GPU runs
+before the main runs will be ≤ 2-epoch smoke tests on ≤ 40 units, whose outputs
+are deleted and not reported.
+
+### P1. Frozen-model protocol (primary)
+
+For each dataset, architecture and model seed m ∈ {0, 1, 2}:
+
+1. Units are partitioned once at random (seed m) into **D_train (40%)** and
+   **D_pool (60%)**. For MSD Task08 the unit is the patient volume (split is
+   patient-disjoint). Kvasir-SEG and FracAtlas have no patient identifiers; their
+   splits are image-wise (limitation, stated).
+2. The backbone is trained on D_train only (10% of D_train held out for
+   checkpoint selection by validation Dice), then **frozen**.
+3. The frozen model predicts every unit of D_pool. No D_pool label is used
+   before calibration.
+4. The small-lesion size cut is the 33rd percentile of ground-truth component
+   sizes in **D_train** (not the pool), so the loss is fixed before calibration.
+5. Within D_pool, R = 1000 random partitions: tune 20% / cal 40% / test 40%.
+
+Under P1 the calibration and test units are i.i.d. given the frozen model, so the
+CRC guarantee holds exactly (conditional on D_train). Cross-fitting (the
+preliminary study) is analysed theoretically and kept as a secondary protocol.
+
+### Datasets and backbones
+
+| | |
+|---|---|
+| Datasets | Kvasir-SEG (all 1000), FracAtlas (719 fractured; non-fractured images used only for training), MSD Task08 liver tumours (3-D volumes, 26-connected tumours) **if the archive completes**; if it does not, this is reported |
+| Backbone A | U-Net, ResNet-34 ImageNet encoder (segmentation_models_pytorch) |
+| Backbone B | Transformer encoder: U-Net decoder with MiT-B2 (SegFormer) ImageNet encoder; if unavailable in the installed library, FPN with EfficientNet-B3 (stated) |
+| Training | AdamW 3e-4, BCE + soft Dice, flips + gamma, 60 epochs (2-D) / 25 epochs (Task08 slices), batch 8, AMP, best validation-Dice checkpoint |
+| Resolution | 352² (Kvasir-SEG, FracAtlas, letterbox as before), 256² (Task08 slices) |
+| Pre-CRC metrics (on D_pool) | Dice, IoU (per unit, threshold 0.5), lesion-wise recall (GT component with ≥ 50% of its pixels at p ≥ 0.5), predicted-component precision, false-positive components per unit |
+
+### Comparisons (all on the same partitions; paired)
+
+- **C1 equal calibration data (primary).** Every method calibrates on *cal* only.
+  The tune split is used only by the lesion-equalized family choice; baselines
+  ignore it. Methods: pixel CRC; joint (union) thresholding — **reference**;
+  max-form thresholding; joint dilation (morphological family under CRC);
+  joint CCRA-S-style strata; ours (union and max). Learn-Then-Test (δ = 0.1) is
+  reported in a separate block because its guarantee is high-probability.
+- **C2 equal total data.** Baselines on tune ∪ cal (the original design).
+- **C3 no tuning.** Lesion-equalized with ρ = 0.5, t₀ = 0.2 fixed now, calibrated
+  on tune ∪ cal — same data as C2 baselines.
+- Set sizes are compared only after the validity check for the risks each
+  method claims.
+
+### Hypotheses and decision rules (per dataset × backbone, α ∈ {0.05, 0.10, 0.15})
+
+- **H1** unchanged (thresholds 1.5 / 1.1 on G_multi or G_small at α = 0.10),
+  now with a bootstrap 95% CI. In addition to the point rule, the paper reports
+  whether the CI lower bound exceeds 1.
+- **H2** unchanged in form, evaluated under C1: supported if the mean paired
+  relative change of `ours_union` vs `union_threshold` is < 0, `ours_union` is
+  smaller in ≥ 95% of partitions, the bootstrap 95% CI of the mean change is
+  entirely below 0, and all three mean test risks are ≤ α + 0.005.
+- **H3 (new, was post-hoc E8).** Adding the K ≥ 2 lesion risk to the joint rule
+  brings the mean test lesion-miss rate on K ≥ 2 units to ≤ α + 0.005. Reported
+  with its set-size and background (false-positive area) cost. Evaluated only
+  where the pool has ≥ 30 multi-lesion units; otherwise reported as
+  under-powered. The earlier E8 numbers stay labelled post hoc.
+
+### Statistics
+
+- Model seeds are the independent replicates (fresh D_train/D_pool and
+  initialisation). Results are given per seed and as mean ± s.d. over seeds.
+- Within a seed, the 1000 partitions describe split variability only
+  (2.5–97.5% percentiles; never called a CI).
+- **CIs**: a unit-level (patient-level for Task08) bootstrap of D_pool, B = 200
+  resamples × 100 partitions each; percentile 95% CI of the mean paired change,
+  of G, and of each mean test risk. This accounts for overlapping partitions and
+  for the finite pool.
+- Counts reported for every risk: number of calibration and test units on which
+  it is defined (all, with a small lesion, with K ≥ 2).
+
+### Ablations and analyses (secondary, all reported)
+
+τ ∈ {0.25, 0.5, 0.75}; small-lesion percentile ∈ {25, 33, 50}; candidate
+connectivity 4 vs 8 (2-D); each of the 17 fixed (ρ, t₀) members on tune ∪ cal;
+calibration size n_cal ∈ {50, 100, 200, all}. Error analysis of lesions missed at
+the joint threshold (size, peak posterior, whether a candidate exists, peak vs
+99th-percentile background). These are descriptive and carry no decision rule.
