@@ -168,8 +168,9 @@ def max_curve(m: Mats, idx, w):
 
 
 def crc_idx(curve, n, alpha):
+    """CRC threshold index; the whole unit (last index) when no grid point is feasible, including n = 0."""
     if n <= 0:
-        return 0
+        return curve.size - 1
     feas = np.flatnonzero((n * curve + LOSS_BOUND) / (n + 1) <= alpha)
     return int(feas[0]) if feas.size else curve.size - 1
 
@@ -240,8 +241,7 @@ def run_partition(fam_mats, base, dil, le_labels, tune, cal, test, w, mass, alph
             out["max" + sfx] = (base, crc_idx(*mx[sub], a))
             out["dil" + sfx] = (dil, union_idx(cvd[sub], a))
             out["ltt" + sfx] = (base, ltt_idx(c, a))
-            out["joint_multi" + sfx] = (base, union_idx(c, a, ("pix", "les", "small", "multi")) if c["multi"][1] > 0
-                                        else union_idx(c, a))
+            out["joint_multi" + sfx] = (base, union_idx(c, a, ("pix", "les", "small", "multi")))
             # CCRA-S-style strata of total predicted mass; cutpoints from the calibration units
             st, scv = strata[sub]
             per = {g: union_idx(scv[g], a) for g in range(N_STRATA)}

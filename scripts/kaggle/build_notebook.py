@@ -66,6 +66,8 @@ import subprocess, sys, os, shutil, json, time
 subprocess.run([sys.executable, "-m", "pip", "install", "-q", "segmentation-models-pytorch", "nibabel"], check=True)
 import torch, segmentation_models_pytorch as smp
 print("torch", torch.__version__, "| smp", smp.__version__, "| GPU", torch.cuda.get_device_name(0) if torch.cuda.is_available() else None)
+assert torch.cuda.is_available(), ("NO GPU: set Settings -> Accelerator -> 'GPU T4 x2' in the right panel, "
+                                   "then Save Version -> Save & Run All (Commit) again")
 os.system("df -h /tmp /kaggle/working | cat; nproc; free -g")
 """),
          md("## Code (verbatim copies of the repository files)"),
@@ -75,17 +77,39 @@ for d in ["backend/app/calibration", "backend/app/core", "backend/scripts/experi
 """)]
 
 for rel, src in FILES.items():
-    text = "" if src is None else src.read_text(encoding="utf-8")
+    text = "# package marker\n" if src is None else src.read_text(encoding="utf-8")
     cells.append(code(f"%%writefile /kaggle/working/pums/{rel}\n{text}"))
 cells.append(code(f"%%writefile /kaggle/working/pums/backend/app/core/config.py\n{CONFIG_STUB}"))
 
 cells += [md("## Data (official sources)"), code('''
 DATA = "/tmp/pums_data"
 os.makedirs(DATA, exist_ok=True)
+import hashlib
+# Integrity is checked against SHA-256 / size of the copies used in the preliminary study, so falling
+# back to --no-check-certificate (Simula's TLS certificate fails verification) cannot admit a wrong file.
+EXPECTED = {"kvasir-seg.zip": ("03b30e21d584e04facf49397a2576738fd626815771afbbf788f74a7153478f7", 46227172),
+            "fracatlas.zip": ("b67ec2d290a022b3dcf47f78e9a37f7edcc80592c0571f439355bf00bd9f0e23", 338436460),
+            "task08.tar": (None, 9347254784)}
+def sha256(path):
+    h = hashlib.sha256()
+    with open(path, "rb") as f:
+        for chunk in iter(lambda: f.read(1 << 24), b""):
+            h.update(chunk)
+    return h.hexdigest()
 def fetch(url, dest):
     if not os.path.exists(dest):
-        subprocess.run(["wget", "-q", "--tries=20", "--continue", "-O", dest, url], check=True)
-    print(dest, os.path.getsize(dest) // 2**20, "MB")
+        base = ["wget", "-q", "--tries=20", "--continue", "-O", dest, url]
+        if subprocess.run(base).returncode != 0:
+            print("certificate/transfer problem; retrying without TLS verification (checksum enforced below)")
+            if os.path.exists(dest):
+                os.remove(dest)
+            subprocess.run(base[:1] + ["--no-check-certificate"] + base[1:], check=True)
+    digest, size = EXPECTED[os.path.basename(dest)]
+    got = os.path.getsize(dest)
+    assert got == size, f"{dest}: size {got} != expected {size}"
+    if digest:
+        assert sha256(dest) == digest, f"{dest}: SHA-256 mismatch"
+    print(dest, got // 2**20, "MB, verified")
 def unpack(archive, target):
     if not os.path.isdir(target):
         os.makedirs(target)
@@ -164,3 +188,21 @@ nb = {"cells": cells, "metadata": {"kernelspec": {"display_name": "Python 3", "l
                                    "language_info": {"name": "python"}}, "nbformat": 4, "nbformat_minor": 5}
 OUT.write_text(json.dumps(nb, indent=1), encoding="utf-8")
 print(f"wrote {OUT} ({len(cells)} cells)")
+
+# Ready-to-run copies for each session: only the CONFIG cell differs.
+SESSIONS = {
+    "pums_session1_2d.ipynb": ('"2d"', '["unet-r34", "unet-mitb2"]'),
+    "pums_session2_task08_unet-r34.ipynb": ('"task08"', '["unet-r34"]'),
+    "pums_session3_task08_unet-mitb2.ipynb": ('"task08"', '["unet-mitb2"]'),
+}
+cfg_idx = next(i for i, c in enumerate(cells) if "CONFIG: edit before each session" in "".join(c["source"]))
+base_cfg = "".join(cells[cfg_idx]["source"])
+for name, (job, archs) in SESSIONS.items():
+    src = (base_cfg.replace('JOB   = "2d"', f"JOB   = {job}")
+                   .replace('ARCHS = ["unet-r34", "unet-mitb2"]', f"ARCHS = {archs}"))
+    assert src != base_cfg or job == '"2d"'
+    cells_s = [dict(c) for c in cells]
+    cells_s[cfg_idx] = code(src)
+    nb_s = dict(nb, cells=cells_s)
+    (OUT.parent / name).write_text(json.dumps(nb_s, indent=1), encoding="utf-8")
+    print(f"wrote {name}: JOB={job} ARCHS={archs}")

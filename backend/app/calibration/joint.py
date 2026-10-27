@@ -59,10 +59,13 @@ def max_form_matrix(st: StackedStats, risks: tuple[str, ...]) -> np.ndarray:
 
 
 def crc_index(losses: np.ndarray, alpha: float) -> tuple[int, bool]:
-    """First grid index with (n R_n + B)/(n+1) <= alpha. Losses [n, G], non-increasing."""
+    """First grid index with (n R_n + B)/(n+1) <= alpha. Losses [n, G], non-increasing.
+
+    With no feasible grid point, including n = 0, the whole unit (last index) is returned and flagged infeasible.
+    """
     n = losses.shape[0]
     if n == 0:
-        return 0, True
+        return int(losses.shape[1] - 1), False
     corrected = (n * losses.mean(axis=0, dtype=np.float64) + LOSS_BOUND) / (n + 1)
     feasible = np.flatnonzero(corrected <= alpha)
     if feasible.size:
