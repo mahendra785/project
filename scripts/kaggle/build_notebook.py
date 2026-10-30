@@ -180,8 +180,8 @@ print(out, os.path.getsize(out) // 2**20, "MB")
 '''), md("""
 ## After the run
 Open the version's **Output** tab and download `revision_results_*.zip`. Put every zip (one per session) into
-`docs/research/results_v2_kaggle/` in the repository and tell Claude. It merges them and runs the final aggregation,
-figures, and paper build locally.
+`docs/research/` of this repository and unzip it there (each archive contains `results_v2/`). Then run
+`backend/scripts/experiments/aggregate_v2.py` and `paper/journal/build.py` for the aggregation, figures and paper.
 """)]
 
 nb = {"cells": cells, "metadata": {"kernelspec": {"display_name": "Python 3", "language": "python", "name": "python3"},

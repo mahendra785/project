@@ -1,0 +1,420 @@
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%% SOURCE FILE. Do not submit this file: run paper/journal/build.py, which
+%% replaces every @@TOKEN@@ with a number computed from the committed result
+%% files and writes manuscript.tex (single file, no \input, as required).
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\documentclass[sn-mathphys-num]{sn-jnl}% Math and Physical Sciences Numeric Reference Style
+
+\newif\iffastcompile
+\fastcompilefalse
+\iffastcompile
+  \PassOptionsToPackage{draft}{graphicx}
+\fi
+
+\usepackage[T1]{fontenc}
+\usepackage{tabularx}
+\usepackage{enumitem}
+\usepackage{graphicx}
+\graphicspath{{figures/}}
+\usepackage{array,colortbl,xcolor,longtable}
+\usepackage{mathtools}
+\usepackage{amssymb}
+\usepackage{makecell}
+\usepackage{float}
+\usepackage[section]{placeins}
+\usepackage{algorithm}
+\usepackage{algpseudocode}
+\usepackage{newtxtext,newtxmath}
+\usepackage{booktabs}
+\usepackage{multirow}
+
+\setcounter{topnumber}{3}
+\setcounter{bottomnumber}{2}
+\setcounter{totalnumber}{5}
+\renewcommand{\topfraction}{0.9}
+\renewcommand{\bottomfraction}{0.8}
+\renewcommand{\textfraction}{0.07}
+\renewcommand{\floatpagefraction}{0.8}
+
+\theoremstyle{thmstyleone}
+\newtheorem{theorem}{Theorem}
+\newtheorem{proposition}{Proposition}
+\newtheorem{lemma}{Lemma}
+\newtheorem{corollary}{Corollary}
+\theoremstyle{thmstyletwo}
+\newtheorem{remark}{Remark}
+\newtheorem{example}{Example}
+\theoremstyle{thmstylethree}
+\newtheorem{definition}{Definition}
+\newtheorem{assumption}{Assumption}
+
+\newcommand{\E}{\mathbb{E}}
+\newcommand{\Prob}{\mathbb{P}}
+\newcommand{\1}{\mathbb{1}}
+\newcommand{\lhat}{\hat\lambda}
+\newcommand{\pix}{\mathrm{pix}}
+\newcommand{\les}{\mathrm{les}}
+\newcommand{\sml}{\mathrm{sml}}
+\newcommand{\mul}{\mathrm{mul}}
+
+\raggedbottom
+
+\begin{document}
+
+\title[Lesion-Level Joint Conformal Risk Control for Segmentation]{Lesion-Level Joint Conformal Risk Control for Medical Image Segmentation: Guarantees on Missed Lesions, Not Only Missed Pixels}
+
+\author[1]{\fnm{Mahendra Sajjan} \sur{Choudhary}}\email{mahendra.sajjan2023@vitstudent.ac.in}
+\author[1]{\fnm{Vansh} \sur{Bhatiya}}\email{vansh.bhatiya2023@vitstudent.ac.in}
+\author*[1]{\fnm{Shashank Mouli} \sur{Satapathy}}\email{shashankmouli.s@vit.ac.in}
+
+\affil[1]{\orgdiv{School of Computer Science and Engineering (SCOPE)}, \orgname{Vellore Institute of Technology}, \orgaddress{\city{Vellore}, \postcode{632014}, \state{Tamil Nadu}, \country{India}}}
+
+\abstract{@@ABSTRACT@@}
+
+\keywords{@@KEYWORDS@@}
+
+\maketitle
+
+%=====================================================================
+\section{Introduction}\label{sec:intro}
+%=====================================================================
+
+Segmentation networks are increasingly used to outline tumours, polyps and fractures, and a growing body of work attaches distribution-free uncertainty to their outputs~\cite{lambert2024trustworthy,angelopoulos2023gentle}. Split conformal risk control (CRC)~\cite{angelopoulos2024crc} is particularly attractive in this setting: it post-processes the probability map of any frozen model and, using a held-out calibration set, chooses a threshold $\lhat$ such that the expected value of a monotone loss on a new image is at most a user-chosen level $\alpha$. The guarantee holds in finite samples and requires only exchangeability of calibration and test data. In segmentation the loss is almost always the pixel false-negative rate (FNR), the fraction of ground-truth foreground pixels outside the prediction set~\cite{angelopoulos2024crc,luo2025ccra,tan2025cls,resende2026recirc}.
+
+In detection-driven tasks, such as polyp screening or the search for metastases, the unit of harm is often a lesion rather than a pixel; in other tasks, such as contouring for radiotherapy planning, pixel-level accuracy remains the relevant target. When lesions matter, pixel FNR can be misleading: a 4\,mm metastasis next to a 4\,cm primary tumour contributes almost nothing to the pixel FNR of the image, so a guarantee on pixel FNR can hold while small lesions are routinely missed. The same size bias is well documented for overlap metrics such as Dice~\cite{maierhein2024metrics,reinke2024pitfalls,jaus2025ccmetrics} and has motivated instance-aware training losses~\cite{kofler2023blob,bouteille2025closer} and lesion-wise challenge metrics~\cite{moawad2023bratsmets}. To our knowledge, among the risk-control methods reviewed in Section~\ref{sec:related}, none states its guarantee on lesions defined as ground-truth connected components, and none controls such a lesion-level risk together with pixel FNR.
+
+Two further questions arise. Several risks are usually controlled together with Learn-Then-Test (LTT)~\cite{angelopoulos2025ltt,laufer2023pareto}, which gives a stronger, high-probability guarantee; what an expectation guarantee for several segmentation risks costs in set size has not been measured. And the prediction-set family is inherited from the pixel problem, so whether a family designed for a lesion loss can do better is open.
+
+This paper asks three research questions:
+\begin{description}[leftmargin=2.2em,style=sameline]
+\item[RQ1] Does a pixel-level CRC guarantee leave lesions, and in particular lesions in multi-lesion images and small lesions, under-protected?
+\item[RQ2] Can lesion-level risks be controlled together with pixel FNR, at one threshold and with a finite-sample guarantee for each risk, and how much larger do the prediction sets become compared with pixel-only control and with existing multi-risk procedures?
+\item[RQ3] Can a prediction-set family designed for a lesion loss reduce set size under the same joint guarantee, and under which conditions?
+\end{description}
+
+Our contributions are as follows. (i) We define lesion-miss and small-lesion-miss losses on ground-truth connected components, state the population of units on which each guarantee holds, and prove that they are valid CRC losses under any label-free nested set family. (ii) We give a joint calibration rule---the maximum of the per-risk CRC thresholds---with a proof that each risk is controlled in expectation at the chosen level, separate this from the stronger max-form guarantee, and characterise which data-handling protocols satisfy the assumptions, including cross-fitting. (iii) We propose lesion-equalized prediction sets, a nested family that rescales each candidate region by its own peak confidence, as a candidate construction: we prove the properties needed for validity and a necessary condition for an efficiency gain. (iv) We evaluate these components under a pre-registered protocol with frozen deep backbones, equal calibration data across methods, clustered-bootstrap confidence intervals and a controlled simulation, and report the hypotheses that failed alongside those that held. The main validated result is the risk-control formulation and its analysis; the efficiency advantage of the proposed family was not established on real data.
+
+The remainder of the paper is organised as follows. Section~\ref{sec:related} reviews related work and states the precise gap. Section~\ref{sec:method} formalises the risks, the guarantees and the set family. Section~\ref{sec:setup} describes the experimental protocol, and Section~\ref{sec:results} answers the research questions. Section~\ref{sec:conclusion} discusses limitations and concludes.
+
+%=====================================================================
+\section{Related work}\label{sec:related}
+%=====================================================================
+
+\paragraph{Conformal risk control and multiple risks.}
+Split conformal prediction and its risk-control generalisations calibrate a fixed model on held-out data~\cite{angelopoulos2023gentle}. Risk-controlling prediction sets (RCPS)~\cite{bates2021rcps} give high-probability bounds on the population risk; CRC~\cite{angelopoulos2024crc} gives an expectation bound with a simpler rule and tighter sets. LTT~\cite{angelopoulos2025ltt} reframes risk control as multiple hypothesis testing and can control several risks simultaneously with probability at least $1-\delta$; Pareto testing~\cite{laufer2023pareto} makes this more efficient when a utility is optimised. Conditional variants target coverage over classes of covariate shifts~\cite{gibbs2025conditional}, adapt the risk to sample difficulty~\cite{blot2025aacrc} or rectify the per-input budget~\cite{resende2026recirc}. All of these act on whatever loss they are given. None defines a lesion-level segmentation loss or studies how the prediction-set family should be designed for one.
+
+\paragraph{Conformal methods for medical image segmentation.}
+For segmentation, CRC has been applied to pixel FNR~\cite{angelopoulos2024crc} and to pixel FNR with image-adaptive scores or strata of images~\cite{luo2025ccra}; conformal lesion segmentation~\cite{tan2025cls} bounds the probability that the voxel FNR of a 3-D volume exceeds a tolerance. Despite its name, the last controls the fraction of lesion \emph{voxels}, so a missed small lesion costs only its voxel share. Conformal semantic segmentation~\cite{mossina2024semantic}, Kandinsky calibration~\cite{brunekreef2024kandinsky} and morphological prediction sets~\cite{mossina2025morph} target coverage of the true mask or of pixels; the morphological approach dilates the predicted mask until a fraction of the true mask is covered, and its companion work shrinks masks to control false positives~\cite{mossina2025fp}. Organ-specific recall control~\cite{adhikary2026perorgan} calibrates each organ separately with a high-probability guarantee, semantic CRC for CT~\cite{teneggi2025semcrc} calibrates intervals with structure-dependent parameters, and FDR control for instance segmentation~\cite{dai2025fdr} calibrates one pixel-level rate at a time. Related conformal tools produce uncertainty intervals for image-to-image problems~\cite{angelopoulos2022im2im}. Conformal sets for instance segmentation~\cite{lu2026instance} answer a different question: whether a queried pixel's instance mask is covered.
+
+\paragraph{Object-level risk control and lesion-level evaluation.}
+The closest object-level losses come from detection: box-wise recall controlled with CRC~\cite{andeol2023railway}, sequential risk control for detection~\cite{andeol2025seqcrc} and nodule-level sensitivity in CT~\cite{hulsman2025nodule}. These operate on detector outputs and control one risk at a time. On the evaluation side, Metrics Reloaded~\cite{maierhein2024metrics,reinke2024pitfalls}, connected-component metrics~\cite{jaus2025ccmetrics} and lesion-wise challenge scoring~\cite{moawad2023bratsmets} all argue that lesions, not voxels, should be counted. Instance-aware losses~\cite{kofler2023blob,bouteille2025closer} change training to the same end, but provide no statistical guarantee.
+
+Table~\ref{tab:related} compares the closest methods by the granularity of the controlled risk, the type of guarantee, the number of risks controlled together, the set construction and the per-partition calibration cost; every row was checked against the original publication. Three guarantee types occur, all marginal over the calibration and test draws unless stated: an \emph{expectation} guarantee, $\E[L_{\mathrm{test}}(\hat\lambda)]\le\alpha$; a \emph{coverage} guarantee, $\Prob(L_{\mathrm{test}}(\hat\lambda)\le\epsilon)\ge1-\alpha$ for one test unit; and a \emph{high-probability} guarantee, under which the population risk at $\hat\lambda$ is at most $\alpha$ with probability at least $1-\delta$ over the calibration draw. Expectation and coverage guarantees require calibration and test units to be exchangeable, whereas high-probability guarantees rest on concentration bounds and require i.i.d.\ calibration units. The cost column of Table~\ref{tab:related} is the per-partition calibration cost when losses are tabulated on a grid of $G$ values for $n$ calibration units. One-time per-unit preprocessing (sorting scores, labelling components, distance transforms; at most $O(|\Omega|\log|\Omega|)$ per unit of $|\Omega|$ pixels) differs between constructions and is not compared.
+
+\begin{table}[t]
+\caption{Comparison of risk-control methods for dense prediction.}
+\label{tab:related}
+\footnotesize
+\setlength{\tabcolsep}{3pt}
+\newcolumntype{L}{>{\raggedright\arraybackslash}X}
+\newcolumntype{P}[1]{>{\raggedright\arraybackslash}p{#1}}
+\begin{tabularx}{\linewidth}{@{}LLP{1.75cm}P{1.45cm}LP{1.55cm}@{}}
+\toprule
+Method & Risk granularity & Guarantee & Risks controlled & Set construction & Cost per partition \\
+\midrule
+CRC~\cite{angelopoulos2024crc} & any monotone loss; pixel FNR in segmentation & expectation & one & posterior threshold & $O(nG)$ \\
+LTT~\cite{angelopoulos2025ltt}, Pareto testing~\cite{laufer2023pareto} & any loss & high-prob. & several (FWER control) & any parameterised family & $O(nG)$ plus testing \\
+CLS~\cite{tan2025cls} & voxel FNR of a volume & coverage & one & quantile of per-volume critical thresholds & $O(nG)$ \\
+CRA, CCRA, CCRA-S~\cite{luo2025ccra} & pixel FNR of an image & expectation (per-stratum control asserted, not proved, for CCRA-S) & one & adaptive score; per-stratum threshold & $O(nG)$ \\
+ReCIRC~\cite{resende2026recirc} & per-input error rate (e.g.\ missed lesion pixels) & expectation; approx.\ conditional if risk curves are accurate & one & per-input budget from estimated risk curves & $O(nG)$ plus curve estimation \\
+Morphological sets~\cite{mossina2025morph} & fraction of true mask covered & coverage & one & dilation of predicted mask & $O(nG)$ \\
+Per-organ recall~\cite{adhikary2026perorgan} & voxel FNR per organ & high-prob., per organ & one per organ, no multiplicity correction & per-organ threshold & $O(nG)$ per organ \\
+sem-CRC~\cite{teneggi2025semcrc} & voxel interval miscoverage, overall or per structure & expectation & one overall, or one per structure & segmentation-guided intervals & optimisation of structure parameters \\
+FDR inst.\ seg.~\cite{dai2025fdr} & pixel FDR or FNR & expectation & one at a time & score threshold & $O(nG)$ \\
+Box-wise CRC~\cite{andeol2023railway} & box recall (detection) & expectation & one & box margin & $O(nG)$ \\
+\midrule
+This work & pixel FNR, lesion miss, small-lesion miss (GT components), each over its eligible units & expectation, per risk & three, each at level $\alpha$; no multiplicity correction & threshold or lesion-equalized family & $O(nG)$ per risk \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\paragraph{Research gap.}
+Three components are missing, and they are not equally novel. (a)~A \emph{lesion-level loss}: none of the methods above defines its risk on ground-truth connected components, or on small components separately. General CRC theory~\cite{angelopoulos2024crc} \emph{admits} such a loss if it is monotone in the set; what has to be established is monotonicity of a component-counting loss under an arbitrary nested family and the population of units on which the guarantee holds when components may be absent (Section~\ref{sec:risks}). (b)~A \emph{joint calibration rule}: controlling three such risks at one threshold follows from monotonicity by a short argument (Theorem~\ref{thm:joint}); the contribution is the formulation and the measurement of its cost, not the proof technique. (c)~A \emph{set family designed for a lesion loss} (Section~\ref{sec:family}), the least established component.
+
+%=====================================================================
+\section{Proposed method}\label{sec:method}
+%=====================================================================
+
+\subsection{Problem formulation and lesion-level risk definitions}\label{sec:risks}
+
+A \emph{unit} is the object on which calibration and testing operate: a 2-D image for Kvasir-SEG and FracAtlas, and a 3-D patient volume for MSD Task08. Unit $i$ has a foreground posterior $\hat p_i:\Omega_i\to[0,1]$ produced by a frozen segmentation model, and a ground-truth mask $Y_i\subseteq\Omega_i$. We split $Y_i$ into connected components $Y_i^1,\dots,Y_i^{K_i}$; these are the \emph{lesions}. Components below a minimum size (Section~\ref{sec:data}) are removed from the mask beforehand, so $Y_i$ is the union of the retained lesions and all three losses below use the same mask. We use full connectivity (8 neighbours in 2-D, 26 in 3-D), so that foreground pixels touching only at a corner belong to the same lesion; the implementation uses the same connectivity for lesions and for the candidate regions of Section~\ref{sec:family}. A \emph{score family} is a map $T$ from posteriors to scores $s_i=T(\hat p_i)\in[0,1]^{\Omega_i}$ that does not use labels, and the prediction sets are the upper level sets
+\begin{equation}\label{eq:sets}
+S_i(\lambda)=\{u\in\Omega_i:\ s_i(u)\ge 1-\lambda\},\qquad \lambda\in\Lambda\subseteq[0,1],\ 1\in\Lambda .
+\end{equation}
+Because $T$ depends neither on $\lambda$ nor on labels, $S_i(\lambda)\subseteq S_i(\lambda')$ whenever $\lambda\le\lambda'$, and $S_i(1)=\Omega_i$.
+
+A lesion is \emph{found} by a set $S$ if at least a fraction $\tau$ of its pixels lie in $S$. A lesion is \emph{small} if its area is below $a_{\mathrm{small}}$, the 33rd percentile of lesion areas in the labels of the training data $D_{\mathrm{train}}$ (pixels for images, voxels for volumes). Both are operational design choices, not clinically validated cut-offs. The hit criterion $\tau=0.5$ follows the overlap-based criteria used in lesion-wise evaluation~\cite{maierhein2024metrics,moawad2023bratsmets}. The data-relative tercile avoids a fixed pixel threshold, whose meaning changes with modality and resolution; it is not a clinical definition of a small lesion. Because $a_{\mathrm{small}}$ is computed from training labels only, the losses are fixed before calibration. Section~\ref{sec:ablation} reports $\tau\in\{0.25,0.75\}$ and the 25th and 50th percentiles as sensitivity analyses. The three losses are
+\begin{align}
+L_i^{\pix}(\lambda)&=1-\frac{|S_i(\lambda)\cap Y_i|}{|Y_i|}, \label{eq:lpix}\\
+L_i^{\les}(\lambda)&=\frac{1}{K_i}\sum_{k=1}^{K_i}\1\!\left\{|S_i(\lambda)\cap Y_i^k|<\tau|Y_i^k|\right\}, \label{eq:lles}\\
+L_i^{\sml}(\lambda)&=\frac{1}{K^{\sml}_i}\sum_{k:\,|Y_i^k|<a_{\mathrm{small}}}\1\!\left\{|S_i(\lambda)\cap Y_i^k|<\tau|Y_i^k|\right\}, \label{eq:lsml}
+\end{align}
+where $K^{\sml}_i=\#\{k:|Y_i^k|<a_{\mathrm{small}}\}$ is the number of small lesions in unit $i$. Three levels of aggregation are involved. Within an eligible unit, $L_i^{\pix}$ is the fraction of its lesion pixels outside the set, and $L_i^{\les}$ and $L_i^{\sml}$ are the fractions of its lesions, or of its small lesions, that are missed. Across units, each risk is the expected loss of one eligible unit, so every eligible image or volume carries the same weight. The risks are therefore unit-averaged, not pooled counts over all lesions of a dataset: a unit with one missed lesion out of one contributes a loss of 1, and a unit with one missed lesion out of ten contributes 0.1, whereas a pooled lesion-weighted miss rate would weight units by their number of lesions. Each loss is defined only on the units where its denominator is positive. We encode this with a label-defined eligibility indicator $E_i^r$: $E_i^{\pix}=E_i^{\les}=\1\{K_i\ge1\}$ and $E_i^{\sml}=\1\{K^{\sml}_i\ge1\}$. The corresponding risks are
+\begin{equation}\label{eq:risks}
+R^r(\lambda)=\E\!\left[L^r(\lambda)\mid E^r=1\right],\qquad r\in\mathcal R=\{\pix,\les,\sml\}.
+\end{equation}
+Thus $R^{\les}$ is the expected fraction of lesions missed in a unit that contains at least one lesion, and $R^{\sml}$ is the expected fraction of small lesions missed in a unit that contains at least one small lesion. Every guarantee below therefore applies to its eligible population: to lesion-bearing units for $R^{\pix}$ and $R^{\les}$, and to units with a small lesion for $R^{\sml}$; it says nothing about lesion-free units and is not a guarantee for every image or patient. Lesion-free units are excluded from calibration and evaluation of all three risks: their pixel and lesion losses are undefined, and they can only enlarge sets. In Section~\ref{sec:multi} we also use the multi-lesion risk $R^{\mul}$, which is $L^{\les}$ restricted to the eligible units with $K_i\ge2$.
+
+\begin{lemma}[Monotonicity]\label{lem:mono}
+For any label-free score family, each $L_i^r$ in \eqref{eq:lpix}--\eqref{eq:lsml} is non-increasing in $\lambda$, takes values in $[0,1]$, and satisfies $L_i^r(1)=0$.
+\end{lemma}
+\begin{proof}
+The sets are nested, so $|S_i(\lambda)\cap Y_i|$ and every $|S_i(\lambda)\cap Y_i^k|$ are non-decreasing in $\lambda$. Hence $L^{\pix}$ is non-increasing, and each indicator in \eqref{eq:lles}--\eqref{eq:lsml} can only switch from 1 to 0 as $\lambda$ grows. The normalisers $|Y_i|$, $K_i$, $K^{\sml}_i$ do not depend on $\lambda$. At $\lambda=1$, $S_i=\Omega_i$, so every lesion is fully covered.
+\end{proof}
+
+\begin{lemma}[One order statistic per lesion]\label{lem:orderstat}
+Let $q_i^k$ be the $\lceil\tau|Y_i^k|\rceil$-th largest value of $s_i$ on $Y_i^k$. Lesion $k$ is found by $S_i(\lambda)$ if and only if $q_i^k\ge 1-\lambda$.
+\end{lemma}
+\begin{proof}
+$|S_i(\lambda)\cap Y_i^k|\ge\lceil\tau|Y_i^k|\rceil$ holds iff at least $\lceil\tau|Y_i^k|\rceil$ pixels of $Y_i^k$ have score $\ge1-\lambda$, that is, iff the $\lceil\tau|Y_i^k|\rceil$-th largest score is $\ge1-\lambda$.
+\end{proof}
+
+Lemma~\ref{lem:orderstat} reduces each lesion to a single number. The whole loss curve of a unit on a grid $\Lambda$ of size $G$ is therefore obtained from one sort of its scores, which costs $O(|\Omega|\log|\Omega|)$, the same as for the pixel loss.
+
+\subsection{Joint conformal risk control and theoretical guarantees}\label{sec:theory}
+
+\begin{assumption}[Exchangeability]\label{ass:exch}
+Conditional on the frozen model and on the score family $T$ (including $a_{\mathrm{small}}$), the calibration units $1,\dots,n$ and the test unit $n+1$ have exchangeable pairs $(\hat p_i,Y_i)$.
+\end{assumption}
+
+For risk $r$, let $\mathcal I_r=\{i\le n: E_i^r=1\}$, $n_r=|\mathcal I_r|$ and $\hat R_n^r(\lambda)=n_r^{-1}\sum_{i\in\mathcal I_r}L_i^r(\lambda)$. With loss bound $B=1$, the CRC threshold~\cite{angelopoulos2024crc} is
+\begin{equation}\label{eq:crc}
+\lhat^r=\min\left\{\lambda\in\Lambda:\ \frac{n_r\hat R_n^r(\lambda)+B}{n_r+1}\le\alpha\right\},
+\end{equation}
+The feasible set is non-empty if and only if $n_r+1\ge B/\alpha$, because $\hat R_n^r(1)=0$ makes $\lambda=1$ feasible exactly then. If $n_r+1<B/\alpha$, including $n_r=0$, we set $\lhat^r=1$, the whole unit. With $B=1$ the rule therefore needs at least 19, 9 and 6 eligible calibration units at $\alpha=0.05,0.10,0.15$; how often smaller subgroups trigger this fallback in our experiments is reported in Section~\ref{sec:stats}.
+
+\begin{lemma}[CRC on a label-defined subpopulation]\label{lem:sub}
+Under Assumption~\ref{ass:exch}, for every $r$ and $\alpha\in(0,1)$, $\E[L_{n+1}^r(\lhat^r)\mid E_{n+1}^r=1]\le\alpha$.
+\end{lemma}
+\begin{proof}
+$E^r$ is a fixed function of the label. Fix a set $j\subseteq\{1,\dots,n+1\}$ containing $n+1$ and condition on the event $\mathcal J=j$, where $\mathcal J=\{i\le n+1:E^r_i=1\}$ is the set of eligible indices. A permutation of the units in $j$ leaves this event unchanged and, by Assumption~\ref{ass:exch}, leaves the joint law of the data unchanged, so the units in $j$ remain exchangeable conditionally on $\mathcal J=j$. This is the standard argument behind label-conditional (Mondrian) conformal prediction~\cite{angelopoulos2023gentle}. Let $m=|j|$, so that $n_r=m-1$, and let $\lambda'=\min\{\lambda\in\Lambda:\ m^{-1}\sum_{i\in j}L^r_i(\lambda)\le\alpha\}$, which exists because $1\in\Lambda$ and $L_i^r(1)=0$. As $\lambda'$ is a symmetric function of the $m$ exchangeable losses, $\E[L^r_{n+1}(\lambda')\mid\mathcal J=j]=\E[m^{-1}\sum_{i\in j}L^r_i(\lambda')\mid\mathcal J=j]\le\alpha$. If the feasible set in \eqref{eq:crc} is non-empty, then at $\lhat^r$ we have $m^{-1}\sum_{i\in j}L^r_i(\lhat^r)\le(n_r\hat R^r_n(\lhat^r)+B)/(n_r+1)\le\alpha$ because $L^r_{n+1}\le B$, so $\lambda'\le\lhat^r$; if it is empty, $\lhat^r=1\ge\lambda'$. In both cases $L^r_{n+1}(\lhat^r)\le L^r_{n+1}(\lambda')$ by Lemma~\ref{lem:mono}, which gives $\E[L^r_{n+1}(\lhat^r)\mid\mathcal J=j]\le\alpha$. This is the argument of Theorem~1 of~\cite{angelopoulos2024crc}, written for a finite grid and including the fallback. Averaging over $j$ proves the claim.
+\end{proof}
+
+\begin{theorem}[Joint lesion-level CRC]\label{thm:joint}
+Let $\lhat^\cup=\max_{r\in\mathcal R}\lhat^r$. Under Assumption~\ref{ass:exch}, for every $r\in\mathcal R$,
+\[
+\E\!\left[L_{n+1}^r(\lhat^\cup)\mid E^r_{n+1}=1\right]\le\alpha .
+\]
+\end{theorem}
+\begin{proof}
+Fix $r$. Since $\lhat^\cup\ge\lhat^r$ and $L^r_{n+1}$ is non-increasing (Lemma~\ref{lem:mono}), $L^r_{n+1}(\lhat^\cup)\le L^r_{n+1}(\lhat^r)$ holds pointwise, for every realisation of the data. Taking conditional expectations and applying Lemma~\ref{lem:sub} gives the bound. The argument applies to each $r$ separately at the same threshold $\lhat^\cup$ and uses no union bound, so each of the $|\mathcal R|$ expectation bounds holds at level $\alpha$ without a multiplicity correction.
+\end{proof}
+
+Theorem~\ref{thm:joint} controls each conditional expected risk separately, on its own eligible population. It does \emph{not} imply that $\E[\max_r L^r]\le\alpha$, nor that any risk is at most $\alpha$ in an individual image or volume.
+
+\begin{example}[The union rule does not bound the worst risk]\label{ex:union}
+Suppose half of the images have $L^{\pix}=2\alpha,\ L^{\les}=0$ at $\lhat^\cup$ and the other half have $L^{\pix}=0,\ L^{\les}=2\alpha$. Each risk equals $\alpha$, yet $\E[\max(L^{\pix},L^{\les})]=2\alpha$.
+\end{example}
+
+The stronger statement requires calibrating the per-unit worst loss directly. Below, $R^r(\hat\lambda)$ for a data-dependent threshold $\hat\lambda$ denotes $\E[L^r_{n+1}(\hat\lambda)\mid E^r_{n+1}=1]$, with the expectation taken over the calibration and test units, as in Theorem~\ref{thm:joint}.
+
+\begin{proposition}[Max-form control]\label{prop:max}
+Let $L_i^{\max}(\lambda)=\max\{L_i^{\pix}(\lambda),\,L_i^{\les}(\lambda),\,E^{\sml}_iL_i^{\sml}(\lambda)\}$ on units with $K_i\ge1$, and let $\lhat^{\max}$ be the CRC threshold \eqref{eq:crc} for $L^{\max}$. Under Assumption~\ref{ass:exch}, $\E[L^{\max}_{n+1}(\lhat^{\max})\mid K_{n+1}\ge1]\le\alpha$. Consequently $R^{\pix}(\lhat^{\max})\le\alpha$ and $R^{\les}(\lhat^{\max})\le\alpha$, while for the small-lesion risk only $R^{\sml}(\lhat^{\max})\le\alpha/\pi_{\sml}$ follows, with $\pi_{\sml}=\Prob(E^{\sml}=1\mid K\ge1)$.
+\end{proposition}
+\begin{proof}
+$L^{\max}$ is a maximum of non-increasing functions bounded by 1 that vanish at $\lambda=1$, so Lemma~\ref{lem:sub} applies with eligibility $\1\{K\ge1\}$. The pixel and lesion losses are pointwise dominated by $L^{\max}$. For the small-lesion loss, $\E[E^{\sml}L^{\sml}\mid K\ge1]=\pi_{\sml}R^{\sml}$ is bounded by the expectation of $L^{\max}$.
+\end{proof}
+
+In plain terms, the max-form rule bounds the average, over lesion-bearing units, of each unit's worst loss. The pixel and lesion losses never exceed that worst loss, so both risks are bounded at $\alpha$. The small-lesion loss enters only through units that contain a small lesion. Averaged over all lesion-bearing units it is bounded at $\alpha$, but $R^{\sml}$ is defined on the smaller population of units with a small lesion, and on that population the bound becomes $\alpha/\pi_{\sml}$. If, for example, a third of lesion-bearing units contain a small lesion, the max-form rule guarantees a small-lesion risk of only $3\alpha$. We therefore do not claim $R^{\sml}$ control for the max-form rule and report that risk empirically.
+
+The guarantees are only as good as the protocol that produces $(\hat p_i,Y_i)$, so we close this subsection by stating which protocols satisfy Assumption~\ref{ass:exch}.
+
+\begin{proposition}[Frozen-model protocol]\label{prop:frozen}
+Let the units of a pool $D_{\mathrm{pool}}$ and a future unit be i.i.d.\ draws from a population, and let the model and $a_{\mathrm{small}}$ be computed from a training set $D_{\mathrm{train}}$ that is independent of $D_{\mathrm{pool}}$. Partition $D_{\mathrm{pool}}$ uniformly at random into tuning, calibration and test units, and let $T$ be selected by any rule that uses only the tuning units. Conditionally on $D_{\mathrm{train}}$ and on the tuning units, the calibration units, the test units and any future unit are i.i.d. Hence Assumption~\ref{ass:exch} holds and Theorem~\ref{thm:joint} and Proposition~\ref{prop:max} apply, both to held-out test units and to new patients scored by the same frozen model.
+\end{proposition}
+\begin{proof}
+Given $D_{\mathrm{train}}$ the model is a fixed function. A uniformly random partition of i.i.d.\ units is independent of the units' values, so after conditioning on which units form the tuning split and on their values, the remaining units are still i.i.d.\ from the population. $T$ is a function of the tuning units only, hence fixed under this conditioning, and the $(\hat p_i,Y_i)$ of the remaining units are i.i.d.
+\end{proof}
+
+We check the conditions of Proposition~\ref{prop:frozen} against our protocol (Section~\ref{sec:setup}). The units are the images or patient volumes of the pool, assigned to tuning, calibration and test by uniformly random permutations. If the pool is an i.i.d.\ sample, the calibration and test units remain i.i.d.; even if the pool is regarded as a fixed finite population, the random assignment makes them exchangeable, which is all that Lemma~\ref{lem:sub} needs for held-out test units. The backbone, its checkpoint and $a_{\mathrm{small}}$ use only $D_{\mathrm{train}}$. Eligibility $E^r$ is evaluated with the same label-defined rule on calibration and test units, as Lemma~\ref{lem:sub} requires. The family $(\rho,t_0)$ is selected on the tuning split only, and the grid $\Lambda$, the levels and all other choices are fixed in advance. Two caveats remain. For Kvasir-SEG and FracAtlas, which lack patient identifiers, exchangeability holds at the image level, and images of one patient may fall into different splits. The stratified baseline (Section~\ref{sec:baselines}) takes its stratum cutpoints from the calibration units' predicted mass; this choice is label-free but data-dependent, so for that baseline the per-stratum guarantee is approximate.
+
+Cross-fitting~\cite{barber2021jackknife} is attractive with small datasets because every unit receives an out-of-fold posterior. It satisfies a weaker form of the assumption.
+
+\begin{proposition}[Cross-fitted posteriors]\label{prop:crossfit}
+Let $N$ i.i.d.\ units be assigned to $K$ folds by a uniformly random balanced assignment $F$, independent of the data. Let the learning algorithm be symmetric: the law of its output is invariant to permutations of its training set, and its internal randomness is independent of the data. Let unit $i$'s posterior come from the model trained on the units outside fold $F_i$. Then the loss functions $(L_1,\dots,L_N)$ are exchangeable, and CRC calibrated on a uniformly random subset of the $N$ units is valid for a test unit drawn from the remaining ones. The guarantee does not extend to a new unit scored by a deployed model.
+\end{proposition}
+\begin{proof}
+For a permutation $\pi$, $(Z_{\pi(1)},\dots,Z_{\pi(N)})$ and $F\circ\pi$ have the same joint law as $(Z,F)$. The cross-fitted posterior at position $i$ computed from $(Z\circ\pi,F\circ\pi)$ is obtained by training on $\{Z_{\pi(j)}:F_{\pi(j)}\ne F_{\pi(i)}\}$, which is the training set used for unit $\pi(i)$ in the original data. By symmetry of the algorithm, the vector of losses computed from the permuted data is equal in law to the permuted vector of losses, which is exchangeability. A new unit, however, is scored by a model whose relation to that unit differs from the relation between the fold models and the pool units: each fold model was trained on calibration units and on other test units. Its loss is therefore not exchangeable with the pool losses. Accounting for this asymmetry, as cross-validation conformal methods do, yields a weaker guarantee~\cite{barber2021jackknife}.
+\end{proof}
+
+Proposition~\ref{prop:crossfit} is why our preliminary study, which used cross-fitted posteriors (Appendix~\ref{app:prelim}), certifies validity only for units of the cross-fitted pool and makes no claim about new patients scored by a deployed model. All main results use the frozen-model protocol of Proposition~\ref{prop:frozen}. The empirical risks we report on held-out units describe how the method behaves at finite $n$; they are not the guarantee, which follows from the theorems under their assumptions.
+
+\textbf{Agreement of proof and implementation.} We checked the code used for all results against these statements. Each lesion is reduced to the $\lceil\tau|Y_i^k|\rceil$-th largest score of its pixels (Lemma~\ref{lem:orderstat}), and a lesion counts as missed when this score is below the cutoff $1-\lambda$. Each risk is calibrated only on the calibration units where it is defined, with $B=1$ and the rule \eqref{eq:crc} on the 1001-point grid $\Lambda=\{0,0.001,\dots,1\}$. The joint threshold is the largest of the per-risk thresholds, and the max-form loss contains the small-lesion loss only on units with a small lesion, as in Proposition~\ref{prop:max}. The cut $a_{\mathrm{small}}$ is read from the training labels, and the score family is selected before any calibration label is used (Algorithm~\ref{alg:joint}). The one discrepancy concerned an empty eligible subgroup, which has negligible probability in our data: the code used for the reported runs dropped such a risk instead of setting $\lhat^r=1$, whereas the released code implements \eqref{eq:crc} exactly, for CRC and for LTT (Section~\ref{sec:stats}).
+
+\subsection{Lesion-equalized prediction-set construction}\label{sec:family}
+
+With plain thresholding, $s=\hat p$, a lesion is found only once the global cutoff $1-\lambda$ falls below its $\tau$-quantile score (Lemma~\ref{lem:orderstat}). The lesion constraint is therefore set by the least confident lesion in the calibration data, which is typically a small one. At that low cutoff, every background pixel whose posterior exceeds it enters every image's set. Thresholding is the natural ranking for the pixel loss, but for the lesion loss it spends set size on background in order to reach faint lesions. Fig.~\ref{fig:mech} illustrates this mechanism on a synthetic one-dimensional profile, which is not a dataset result; shaded regions are prediction sets and black bars mark true lesions. With thresholding (left panel), the cutoff must fall below the faint lesion's confidence, so background above that cutoff enters the set. After peak normalisation with $\rho=1$ (right panel), the construction defined below finds both lesions with one cutoff and excludes the background.
+
+\begin{definition}[Lesion-equalized scores]\label{def:le}
+Fix a candidate cutoff $t_0\in(0,1]$, an equalization strength $\rho\in[0,1]$ and a connectivity. Let $C_1,\dots,C_J$ be the connected components of $\{u:\hat p(u)\ge t_0\}$, the \emph{candidate regions}, and $P_j=\max_{u\in C_j}\hat p(u)$. The candidates are computed from the posterior map alone, never from ground-truth labels. The lesion-equalized score is
+\begin{equation}\label{eq:le}
+s(u)=\begin{cases}\min\{1,\ \hat p(u)/P_j^{\rho}\} & u\in C_j,\\ \hat p(u) & \text{otherwise.}\end{cases}
+\end{equation}
+\end{definition}
+
+\begin{figure}[t]
+\centering
+\includegraphics[width=\linewidth]{mech.pdf}
+\caption{Thresholding versus lesion-equalized scores on an illustrative one-dimensional profile.}
+\label{fig:mech}
+\end{figure}
+
+\begin{proposition}[Properties of the family]\label{prop:le}
+For every $(\rho,t_0)$:
+\begin{enumerate}[label=(\alph*)]
+\item \emph{Validity.} $s$ is a deterministic, label-free function of $\hat p$, so the sets \eqref{eq:sets} are nested and Lemma~\ref{lem:mono}, Theorem~\ref{thm:joint} and Propositions~\ref{prop:max}--\ref{prop:frozen} apply unchanged, provided $(\rho,t_0)$ and the connectivity are fixed before calibration (e.g.\ chosen on the tuning split).
+\item \emph{Ordering and inclusion of the baseline.} $s\in[0,1]$. Every candidate pixel outranks every non-candidate pixel. $\rho=0$ gives exactly $s=\hat p$.
+\item \emph{Amplitude invariance.} If $\hat p=a\,g$ on a candidate $C_j$ with $a>0$, then at $\rho=1$, $s=g/\max_{C_j}g$ on $C_j$, which does not depend on $a$, provided $C_j$ itself is unchanged, i.e.\ $a\,g\ge t_0$ on the same support.
+\item \emph{Background exclusion.} For any cutoff $c=1-\lambda\ge t_0$, $S(\lambda)\subseteq\bigcup_jC_j$. Thresholding has no such containment.
+\item \emph{Cost of false candidates.} At cutoff $c$, a candidate region $C$ without lesion pixels adds exactly $\#\{u\in C:\hat p(u)\ge c\,P_C^{\rho}\}$ pixels to the set, compared with $\#\{u\in C:\hat p(u)\ge c\}$ under thresholding.
+\end{enumerate}
+\end{proposition}
+\begin{proof}
+(a) is immediate from Lemma~\ref{lem:mono} and Propositions~\ref{prop:frozen}--\ref{prop:crossfit}, because $s$ does not depend on $\lambda$ or on labels.
+(b) On $C_j$, $P_j\le1$ gives $s(u)\ge\hat p(u)\ge t_0$, while every non-candidate pixel has $s(v)=\hat p(v)<t_0$. At $\rho=0$, $P_j^0=1$.
+(c) $s=a g/(a\max g)=g/\max g$.
+(d) A non-candidate pixel has $s<t_0\le c$.
+(e) follows directly from \eqref{eq:le}.
+\end{proof}
+
+Proposition~\ref{prop:le}(a) is a validity statement only: every member of the family inherits the guarantees of Section~\ref{sec:theory}. It does not show that equalization yields smaller sets or greater clinical utility, which is the empirical question RQ3. Parts (c)--(e) indicate when a gain is possible. At $\rho=1$, a faint lesion inside a candidate is found at the cutoff at which a fully confident lesion of the same shape would be found, but candidate regions without lesions are equalized just as much. A gain therefore needs faint lesions to form candidates of their own (a peak of at least $t_0$) and false candidates above $t_0$ to be few or small. If the peak posterior of small lesions does not exceed the high quantiles of the background, no $t_0$ satisfies both conditions, and the best member of this family is thresholding ($\rho=0$). We call this the \emph{detectability condition} and measure it in Section~\ref{sec:error}.
+
+The pair $(\rho,t_0)$ is selected on the tuning split from a fixed 17-member grid, $\rho\in\{0.25,0.5,0.75,1\}\times t_0\in\{0.05,0.1,0.2,0.3\}$ plus thresholding, by the smallest set-to-truth ratio under the joint rule computed on the tuning split; ties are resolved in favour of thresholding, and the candidate connectivity is fixed in advance (8 or 26 neighbours). The final threshold is then calibrated on the separate calibration split with the selected family held fixed. Score-family selection therefore uses only tuning labels: no calibration or test label influences $(\rho,t_0)$, and no test label is used at any step. Because thresholding is a member of the grid, the selected family can fall back to the baseline. Algorithm~\ref{alg:joint} summarises the full procedure.
+
+\begin{algorithm}[t]
+\caption{Joint lesion-level CRC with a lesion-equalized family selected on the tuning split}\label{alg:joint}
+\begin{algorithmic}[1]
+\Require frozen model; disjoint tuning split $D_{\mathrm{tune}}$ and calibration split $D_{\mathrm{cal}}$; level $\alpha$; grid $\Lambda$; grid $\mathcal F$ of score transforms (thresholding and the 16 lesion-equalized pairs $(\rho,t_0)$); $a_{\mathrm{small}}$ from training labels
+\Statex \textbf{Step 1: score-family selection (tuning labels only)}
+\For{each score transform $T\in\mathcal F$}
+  \State compute $L_i^{\pix},L_i^{\les},L_i^{\sml}$ on $\Lambda$ for every $i\in D_{\mathrm{tune}}$ from $s_i=T(\hat p_i)$ (Lemma~\ref{lem:orderstat})
+  \State $\lhat_{\mathrm{tune}}(T)\gets\max_r\lhat^r$, each $\lhat^r$ by \eqref{eq:crc} on the eligible units of $D_{\mathrm{tune}}$
+  \State $\mathrm{size}(T)\gets\sum_{i\in D_{\mathrm{tune}}}|S_i(\lhat_{\mathrm{tune}}(T))|\,/\sum_{i\in D_{\mathrm{tune}}}|Y_i|$
+\EndFor
+\State $T^\star\gets\arg\min_{T\in\mathcal F}\mathrm{size}(T)$, ties to thresholding; $T^\star$ is fixed from here on
+\Statex \textbf{Step 2: threshold calibration (calibration labels only, $T^\star$ fixed)}
+\For{$r\in\{\pix,\les,\sml\}$}
+  \State $\lhat^r\gets$ \eqref{eq:crc} on $\{i\in D_{\mathrm{cal}}:E_i^r=1\}$ with $s_i=T^\star(\hat p_i)$; $\lhat^r=1$ if no $\lambda\in\Lambda$ is feasible
+\EndFor
+\State $\lhat^\cup\gets\max_r\lhat^r$
+\Statex \textbf{Step 3: prediction (no labels)}
+\State \Return $S_{\mathrm{new}}=\{u:T^\star(\hat p_{\mathrm{new}})(u)\ge1-\lhat^\cup\}$ for each new or test unit
+\end{algorithmic}
+\end{algorithm}
+
+%=====================================================================
+\section{Experimental setup}\label{sec:setup}
+%=====================================================================
+
+All protocol choices below were fixed in a pre-registration, committed to the project repository before any result was computed and followed by three dated amendments (supplementary material). Amendment~3 specifies the frozen-model protocol, the deep backbones, the equal-data comparisons and the statistical analysis used in this paper. Results from the earlier random-forest study are kept unchanged as the preliminary study (Appendix~\ref{app:prelim}).
+
+\subsection{Datasets and segmentation backbones}\label{sec:data}
+
+@@DATASETS_PARAGRAPH@@
+
+\textbf{Units and splits.} For each dataset, backbone and model seed $m\in\{0,1,2\}$, the units are partitioned once into $D_{\mathrm{train}}$ (40\%) and $D_{\mathrm{pool}}$ (60\%). Ten percent of $D_{\mathrm{train}}$ is held out to select the checkpoint by validation Dice. The model is then frozen and predicts every pool unit (Proposition~\ref{prop:frozen}). Kvasir-SEG and FracAtlas provide no patient identifiers, so patient-wise splitting is impossible for them: their units are images and all their splits are image-wise. Images of the same patient may therefore fall into both $D_{\mathrm{train}}$ and $D_{\mathrm{pool}}$, or into both calibration and test. For these two datasets, exchangeability, the guarantees, the empirical risks and the bootstrap intervals all refer to images rather than patients; if images of one patient are correlated, held-out images may be easier than those of a new patient, and the intervals may be too narrow. Only the Task08 splits, whose units are patient volumes, are patient-disjoint.
+
+\textbf{Preprocessing.} Kvasir-SEG and FracAtlas images are converted to grey level, zero-padded to a square and resized to $352^2$ (area interpolation for images, nearest neighbour for labels); padding pixels receive score 0 and can enter a set only at $\lambda=1$. Task08 volumes are windowed to $[-100,250]$\,HU and resized in-plane to $256^2$. The 2-D networks are trained on all tumour-bearing axial slices and a random 10\% of tumour-free slices of the training patients, and every slice of a pool volume is predicted, so each pool unit is a 3-D posterior. Lesions are the connected components of the ground truth at native resolution with at least 10 pixels (voxels for Task08), with full connectivity; their labels are carried to the working resolution by nearest-neighbour resizing, where all areas, losses and the cut $a_{\mathrm{small}}$ are computed. Lesion-free FracAtlas radiographs (40\% of the 3307 readable ones; 59 truncated files in the official archive are skipped) are added to training as negatives and never enter the pool.
+
+\textbf{Backbones.} We use two architectures from \texttt{segmentation\_models\_pytorch} with ImageNet encoders: a convolutional U-Net with a ResNet-34 encoder and a U-Net decoder on a Mix Transformer (MiT-B2) encoder~\cite{xie2021segformer}. Both are trained for 60 epochs (25 for Task08) with AdamW (learning rate $3\times10^{-4}$, one-cycle schedule), batch size 8, binary cross-entropy plus soft Dice loss, flip and gamma augmentation, and horizontal-flip test-time averaging. The supplementary code gives every configuration, random seed and preprocessing script. Table~\ref{tab:backbones} reports segmentation and lesion-detection performance on the pool \emph{before} any conformal calibration, as mean $\pm$ s.d.\ over the three model seeds. Lesion recall is the fraction of lesions found by the mask $\{\hat p\ge0.5\}$ under the hit criterion of Section~\ref{sec:risks} ($\tau=0.5$); lesion precision is the fraction of predicted components that touch a lesion, and FP is the number of predicted components per unit that touch no lesion. In the same table, $n$ is the number of pool units, and the columns $K\geq2$ and ``small'' give the numbers of pool units with at least two lesions and with a small lesion (ranges over seeds). The FracAtlas and Task08 backbones find only about half of the lesions. This is a property of these backbones, not of the calibration method, but it limits what any guarantee can deliver on these datasets: a set that finds lesions with near-zero posterior must contain most of the unit (Section~\ref{sec:joint}). The FracAtlas and Task08 results therefore check that the guarantees hold under weak detection; they cannot show that the method is practically useful on these datasets, and they are interpreted with this limitation throughout Section~\ref{sec:results}.
+
+@@TABLE_BACKBONES@@
+
+\subsection{Baselines and evaluation metrics}\label{sec:baselines}
+
+All methods are evaluated on the same partitions and at the levels $\alpha\in\{0.05,0.10,0.15\}$. Table~\ref{tab:methods} lists them with the risks each one guarantees and the type of guarantee. A risk listed as guaranteed is controlled under Assumption~\ref{ass:exch} on its eligible population; risks not listed are reported but not controlled. An expectation guarantee means $\E[L]\le\alpha$, and a high-probability guarantee that the population risk is at most $\alpha$ with probability at least $1-\delta$ over the calibration draw, with $\delta=0.1$. The calibration data in Table~\ref{tab:methods} are those of the primary comparison C1; the secondary comparisons C2 and C3 are defined below. The dilation family is the set family of morphological prediction sets~\cite{mossina2025morph}, calibrated here with joint CRC rather than with its original coverage guarantee; the stratified baseline follows CCRA-S~\cite{luo2025ccra}. LTT~\cite{angelopoulos2025ltt} gives a stronger, high-probability guarantee, so it is reported in a separate block and its set sizes are not a like-for-like efficiency comparison. The multi-lesion risk $R^{\mul}$ is reported for every method but guaranteed only by the rule that adds it explicitly.
+
+\begin{table}[t]
+\caption{Methods compared, the risks each one guarantees and its calibration data.}
+\label{tab:methods}
+\footnotesize
+\setlength{\tabcolsep}{3pt}
+\newcolumntype{L}{>{\raggedright\arraybackslash}X}
+\newcolumntype{P}[1]{>{\raggedright\arraybackslash}p{#1}}
+\begin{tabularx}{\linewidth}{@{}P{3.1cm}LLP{2.3cm}@{}}
+\toprule
+Method & Set family and rule & Guaranteed risks (type) & Calibration data (C1) \\
+\midrule
+Pixel CRC~\cite{angelopoulos2024crc} & threshold; CRC on $R^{\pix}$ & $R^{\pix}$ (expectation) & calibration split \\
+Joint CRC, thresholding (reference) & threshold; Theorem~\ref{thm:joint} & $R^{\pix},R^{\les},R^{\sml}$ (expectation, each) & calibration split \\
+Max-form CRC & threshold; Proposition~\ref{prop:max} & $R^{\pix},R^{\les}$ (expectation); $R^{\sml}$ only at $\alpha/\pi_{\sml}$ & calibration split \\
+Joint CRC, dilation family & distance to the predicted mask~\cite{mossina2025morph}; Theorem~\ref{thm:joint} & $R^{\pix},R^{\les},R^{\sml}$ (expectation, each) & calibration split \\
+Joint CRC, CCRA-S strata & threshold; Theorem~\ref{thm:joint} within 3 strata of predicted mass & $R^{\pix},R^{\les},R^{\sml}$ per stratum (expectation; approximate, Section~\ref{sec:theory}) & calibration split \\
+Joint CRC $+\,R^{\mul}$ & threshold; Theorem~\ref{thm:joint} with four risks & $R^{\pix},R^{\les},R^{\sml},R^{\mul}$ (expectation, each) & calibration split \\
+Joint / max-form CRC, lesion-equalized (ours) & $(\rho,t_0)$ tuned; Theorem~\ref{thm:joint} or Proposition~\ref{prop:max} & as the corresponding thresholding rule & calibration split; tuning split for $(\rho,t_0)$ \\
+\midrule
+LTT~\cite{angelopoulos2025ltt} & threshold; Hoeffding--Bentkus $p$-values, fixed-sequence testing & $R^{\pix},R^{\les},R^{\sml}$ (high-prob.) & calibration split \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\textbf{Data budgets.} Comparison \textbf{C1} is primary and the basis of all efficiency conclusions: every method calibrates on the same calibration split, and only our method uses the tuning split, to select $(\rho,t_0)$. Two secondary comparisons check that this does not favour our method. In \textbf{C2} the baselines calibrate on tuning $\cup$ calibration, i.e.\ on 50\% more units than our method. In \textbf{C3} our family is fixed in advance at $\rho=0.5,\ t_0=0.2$ and calibrated on tuning $\cup$ calibration, the same data as the C2 baselines.
+
+\textbf{Metrics.} Efficiency is measured by the \emph{set-to-truth ratio} $\sum_i|S_i|/\sum_i|Y_i|$ and the \emph{background ratio} $\sum_i|S_i\setminus Y_i|/\sum_i|Y_i|$, both pooled over the eligible test units. They are ratios of pixel counts, not percentages or coverage probabilities: a set-to-truth ratio of 2 means the set is twice as large as the lesions it is meant to cover, and on FracAtlas and Task08 ratios of about 255 and 311 correspond to the whole unit. A smaller set is better only if the method meets every risk it guarantees, so set sizes are compared only after the mean test risk of every guaranteed risk has been checked.
+
+\subsection{Calibration protocol and statistical analysis}\label{sec:stats}
+
+\textbf{Partitions and replicates.} Within each pool, $R=1000$ uniformly random partitions assign 20\% of units to tuning, 40\% to calibration and 40\% to test. Model seeds are the independent replicates: each draws a fresh $D_{\mathrm{train}}/D_{\mathrm{pool}}$ split and a fresh initialisation. The 1000 partitions within a seed are re-divisions of the same pool and share its units, so they are not 1000 independent experimental replications. Averaging over them removes the randomness of a single split; their spread measures split-to-split variability only, and it says nothing about how results would vary on a new pool. Where we report it, it is the 2.5--97.5\% range of the per-partition values, labelled as a split range and never as a confidence interval. Comparisons between methods are paired, partition by partition. Thresholds, families and the small-lesion cut never use test labels.
+
+\textbf{Confidence intervals.} 95\% confidence intervals come from a clustered bootstrap of the pool. The resampling unit is the image for Kvasir-SEG and FracAtlas and the patient volume for Task08. This is the unit on which exchangeability is assumed; a patient-level cluster bootstrap was impossible for the two image datasets, which lack patient identifiers (Section~\ref{sec:data}). Each of $B=200$ resamples draws units with replacement and is processed independently for each seed's pool. Partitions of a resample are drawn over its distinct units, so all copies of a resampled unit are kept in the same split, which prevents leakage between calibration and test; a unit drawn $c$ times enters every risk, set-size ratio and CRC count $n_r$ with weight $c$. Within a resample, the statistic is averaged over 100 random partitions, and the 2.5 and 97.5 percentiles of these averages form the interval. The interval therefore reflects the sampling variability of the finite pool. The overlapping partitions are averaged within each resample, never treated as independent observations. Reported point estimates are means over partitions and seeds; for the intervals, the $b$-th bootstrap replicate is averaged over the three seeds before the percentiles are taken.
+
+\textbf{Small calibration subgroups.} A risk is calibrated on the eligible units of the calibration split only (Equation~\eqref{eq:crc}), and the rule falls back to the whole unit when fewer than 19, 9 or 6 eligible units are available at $\alpha=0.05,0.10,0.15$. @@FALLBACK@@ Supplementary Table~S2 gives the expected numbers of eligible calibration and test units for every risk and dataset.
+
+The pre-registered decision rules are as follows. \textbf{H1} (gap) is supported if $G=R^{\les}_{K\ge2}/\alpha$ or $G_{\sml}=R^{\sml}/\alpha$ at the pixel-CRC threshold is at least 1.5 at $\alpha=0.10$; we additionally report whether the CI excludes 1. \textbf{H2} (efficiency) is supported if, under C1, the mean paired change of our set size relative to joint thresholding is negative, ours is smaller in at least 95\% of partitions, the bootstrap CI lies below zero, and all three mean test risks are at most $\alpha+0.005$. \textbf{H3} (multi-lesion) is supported if adding $R^{\mul}$ to the joint rule brings the mean multi-lesion miss rate to at most $\alpha+0.005$; it is evaluated only when the pool of every seed has at least 30 multi-lesion units. The H1 verdicts are labelled as registered: PROCEED (a ratio of at least 1.5 at $\alpha=0.10$), KILL (both ratios at most 1.1 at every level) and INCONCLUSIVE (neither).
+
+Training, calibration and bootstrap ran on an NVIDIA Tesla T4 GPU with Python~3.13, PyTorch~@@TORCH_VERSION@@ and segmentation\_models\_pytorch~@@SMP_VERSION@@. Calibration is vectorised over the grid ($|\Lambda|=1001$); after a one-off per-unit sort, each partition takes about a millisecond. Run times and the session log are in the supplementary material.
+
+\textbf{Deviations from the registered protocol.} @@DEVIATIONS@@
+
+%=====================================================================
+\section{Results and discussion}\label{sec:results}
+%=====================================================================
+
+@@RESULTS@@
+
+%=====================================================================
+\section{Limitations and conclusion}\label{sec:conclusion}
+%=====================================================================
+
+@@CONCLUSION@@
+
+\backmatter
+
+\bmhead{Supplementary information}
+The supplementary material contains the per-seed backbone results, the eligible subgroup sizes and fallback frequencies, the full result tables for every dataset, backbone, level and comparison, the sensitivity analyses on FracAtlas and Task08, the post-hoc analysis E8 of the preliminary study, the registration history with all protocol deviations, and the configuration and seeds needed for reproduction.
+
+\section*{Declarations}
+
+\subsection*{Funding} This research received no specific grant from public, commercial, or not-for-profit funding agencies.
+
+\subsection*{Competing interests} The authors have no competing interests to declare that are relevant to the content of this article.
+
+\subsection*{Ethics approval and consent to participate} This study uses only publicly available, de-identified datasets (Kvasir-SEG, FracAtlas@@ETHICS_TASK08@@) released for research use. No new data were collected from human participants, and no ethics approval was required.
+
+\subsection*{Data availability} Kvasir-SEG~\cite{jha2020kvasir}, FracAtlas~\cite{abedeen2023fracatlas}@@DATA_TASK08@@ are publicly available from their original sources. The posteriors, per-partition results and all derived tables generated in this study are available from the corresponding author on reasonable request.
+
+\subsection*{Code availability} @@CODE_AVAILABILITY@@
+
+\subsection*{Authors' contributions} @@CONTRIBUTIONS@@
+
+\begin{appendices}
+
+\section{Preliminary study with cross-fitted posteriors}\label{app:prelim}
+
+@@APPENDIX_PRELIM@@
+
+\end{appendices}
+
+\bibliography{refs}
+
+\end{document}

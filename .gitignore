@@ -83,3 +83,24 @@ docs/**
 !docs/research/results/backbones/*.json
 docs/research/results_v2/
 docs/research/results_v2_kaggle/
+
+# --- Reproduction of the journal article (Code availability statement) ---
+# The paper build script with its LaTeX source, bibliography and figures, the pre-registration and the aggregated
+# revision results are public so that readers can regenerate every number, table and figure (see REPRODUCING.md).
+!REPRODUCING.md
+!paper/
+paper/*
+!paper/journal/
+paper/journal/*
+!paper/journal/build.py
+!paper/journal/manuscript.src.tex
+!paper/journal/refs.bib
+!paper/journal/figures/
+paper/journal/figures/*
+!paper/journal/figures/*.pdf
+!docs/research/preregistration-mgcrc.md
+!docs/research/results_v2/
+docs/research/results_v2/*
+!docs/research/results_v2/summary_all.json
+!docs/research/results_v2/manifests/
+!docs/research/results_v2/manifests/*.json

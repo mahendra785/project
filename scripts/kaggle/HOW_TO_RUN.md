@@ -1,6 +1,6 @@
 # Running the PUMS revision experiments on Kaggle
 
-The journal revision needs deep-learning results: frozen U-Net and MiT-B2 backbones on Kvasir-SEG, FracAtlas and MSD Task08 liver tumours. Everything runs on a free Kaggle GPU. The notebooks download the data themselves, so you upload only the notebook file.
+These notebooks produced every reported result of the paper: frozen U-Net/ResNet-34 and U-Net/MiT-B2 backbones on Kvasir-SEG, FracAtlas and MSD Task08 liver tumours, followed by calibration, the clustered bootstrap and aggregation. Everything runs on a free Kaggle GPU. The notebooks download the data themselves, so you upload only the notebook file.
 
 ## Files
 
@@ -10,7 +10,7 @@ The journal revision needs deep-learning results: frozen U-Net and MiT-B2 backbo
 | 2 | `pums_session2_task08_unet-r34.ipynb` | MSD Task08 liver tumours, U-Net/ResNet-34, 3 seeds | ~5–7 h |
 | 3 | `pums_session3_task08_unet-mitb2.ipynb` | MSD Task08, U-Net/MiT-B2, 3 seeds | ~6–8 h |
 
-Session 1 is already running on Mahendra's account. Sessions 2 and 3 can run on any account, at the same time as session 1.
+The three sessions are independent and can run at the same time, on one account or on several.
 
 ## One-time setup
 
@@ -36,13 +36,13 @@ Session 1 is already running on Mahendra's account. Sessions 2 and 3 can run on 
 ## When it finishes
 
 1. Open the version → **Output** tab and download `revision_results_<...>.zip` (a few tens of MB).
-2. Send the zip to Mahendra, or put it in the repository folder `docs/research/results_v2_kaggle/`.
+2. Unzip it into `docs/research/` of this repository (each archive contains `results_v2/`), then run `backend/scripts/experiments/aggregate_v2.py` and `paper/journal/build.py`.
 
 ## If something fails
 
-- **Any line says `FAILED`, or the run stops with a red error:** download the log (**Download Logs**) and send it to Mahendra. Don't change the code.
+- **Any line says `FAILED`, or the run stops with a red error:** download the log (**Download Logs**) and open an issue in this repository with the log attached. Don't change the code.
 - **Session 3 smoke test fails for `unet-mitb2`:** change only `ARCHS = ["unet-mitb2"]` to `ARCHS = ["fpn-effb3"]` in the second cell, then save a new version. This is the fallback backbone named in the pre-registration.
-- **"GPU quota exceeded" or "too many sessions":** wait for a running session to finish, or run the file from another person's account. The free quota is 30 GPU hours per week per account.
+- **"GPU quota exceeded" or "too many sessions":** wait for a running session to finish, or run the file from another account. The free quota is 30 GPU hours per week per account.
 
 ## Rules (these keep the results valid for the paper)
 

@@ -1,5 +1,8 @@
 # PUMS — Perception Uncertainty Management System
 
+> **Reproducing the journal article** *Lesion-Level Joint Conformal Risk Control for Medical Image Segmentation*:
+> see [REPRODUCING.md](REPRODUCING.md).
+
 *A post-hoc hierarchical uncertainty calibration framework for dense medical
 vision models under distribution shift.*
 
