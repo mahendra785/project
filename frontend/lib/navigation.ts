@@ -5,6 +5,7 @@ import {
   FlaskConical,
   GaugeCircle,
   LayoutDashboard,
+  MonitorPlay,
   Presentation,
   Radar,
   ScanSearch,
@@ -74,6 +75,13 @@ export const NAV_ITEMS: NavItem[] = [
     label: 'Project demo',
     icon: Presentation,
     description: 'End-to-end walkthrough: novelty, live workflow and every recorded result',
+    group: 'Research',
+  },
+  {
+    href: '/live-demo',
+    label: 'Live demo',
+    icon: MonitorPlay,
+    description: 'Pixel CRC vs the joint rule on real posteriors, image by image',
     group: 'Research',
   },
   {

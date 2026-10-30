@@ -152,6 +152,20 @@ def test_ltt_is_at_least_as_conservative_as_crc_at_moderate_n():
         assert ltt_index(st, alpha, delta=0.1)[0] >= union_index(st, alpha)[0]
 
 
+def test_empty_or_small_subgroup_falls_back_to_whole_unit():
+    """Eq. (crc): with n_r + 1 < B / alpha, including n_r = 0, every rule returns lambda = 1."""
+    st = _random_stats(np.random.default_rng(7), 30)
+    last = st.pix_rate.shape[1] - 1
+    no_small = st.subset(np.flatnonzero(~st.has_small))
+    assert no_small.has_small.sum() == 0
+    assert crc_index(no_small.small_rate[no_small.has_small], 0.1) == (last, False)
+    assert union_index(no_small, 0.1) == (last, False)
+    assert ltt_index(no_small, 0.1) == (last, False)
+    # 18 eligible units: (0 + 1) / 19 > 0.05, so no grid point is feasible at alpha = 0.05 (needs 19)
+    assert crc_index(st.pix_rate[:18], 0.05) == (last, False)
+    assert crc_index(st.pix_rate[:19], 0.05)[1]  # (0 + 1) / 20 = alpha: lambda = 1 is feasible
+
+
 def test_select_family_returns_member_of_grid():
     rng = np.random.default_rng(7)
     raw = [_blob_image(rng, size=40, k=3) for _ in range(20)]

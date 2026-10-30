@@ -28,7 +28,7 @@ export const queryKeys = {
 };
 
 /** Do not retry contract mismatches or 4xx — only transient failures. */
-function retryPolicy(failureCount: number, error: unknown) {
+export function retryPolicy(failureCount: number, error: unknown) {
   if (error instanceof ApiError) {
     if (error.code === 'contract_mismatch') return false;
     if (error.status >= 400 && error.status < 500) return false;

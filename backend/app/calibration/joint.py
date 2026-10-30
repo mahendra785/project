@@ -99,10 +99,15 @@ def hb_pvalue(r_hat: np.ndarray, n: int, alpha: float) -> np.ndarray:
 def ltt_index(
     st: StackedStats, alpha: float, delta: float = 0.1, risks: tuple[str, ...] = RISKS
 ) -> tuple[int, bool]:
-    """Fixed-sequence LTT from lambda = 1 downward; FWER <= delta."""
+    """Fixed-sequence LTT from lambda = 1 downward; FWER <= delta.
+
+    A risk with no eligible calibration unit cannot be tested, so the whole unit is returned (as for CRC).
+    """
     p = None
     for r in risks:
         m = risk_matrix(st, r)[0]
+        if m.shape[0] == 0:
+            return int(st.pix_rate.shape[1] - 1), False
         pr = hb_pvalue(m.mean(axis=0, dtype=np.float64), m.shape[0], alpha)
         p = pr if p is None else np.maximum(p, pr)  # intersection-union
     g = p.size

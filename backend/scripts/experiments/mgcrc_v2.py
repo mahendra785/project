@@ -188,7 +188,10 @@ def hb_p(r_hat, n, alpha):
 
 
 def ltt_idx(cv, alpha, delta=LTT_DELTA):
-    p = np.maximum.reduce([hb_p(cv[r][0], cv[r][1], alpha) for r in ("pix", "les", "small") if cv[r][1] > 0])
+    """Fixed-sequence LTT from lambda = 1 down; the whole unit when a risk has no eligible unit (as for CRC)."""
+    if any(cv[r][1] <= 0 for r in ("pix", "les", "small")):
+        return cv["pix"][0].size - 1
+    p = np.maximum.reduce([hb_p(cv[r][0], cv[r][1], alpha) for r in ("pix", "les", "small")])
     i = p.size - 1
     while i - 1 >= 0 and p[i - 1] <= delta:
         i -= 1

@@ -52,6 +52,12 @@
   --unc-3: oklch(0.79 0.13 85);
   --unc-4: oklch(0.56 0.18 28);
 
+  /* Categorical series (validated adjacent order) for the live-demo risk curves. */
+  --viz-1: #2a78d6;
+  --viz-2: #eb6834;
+  --viz-3: #1baf7a;
+  --viz-4: #eda100;
+
   --radius: 0.5rem;
 }
 
@@ -87,6 +93,11 @@
   --status-info: oklch(0.68 0.12 245);
   --status-warn: oklch(0.76 0.13 78);
   --status-danger: oklch(0.65 0.18 25);
+
+  --viz-1: #3987e5;
+  --viz-2: #d95926;
+  --viz-3: #199e70;
+  --viz-4: #c98500;
 }
 
 @theme inline {

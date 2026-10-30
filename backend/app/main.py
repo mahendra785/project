@@ -12,6 +12,7 @@ from app.api.routes import (
     analysis,
     calibration,
     datasets,
+    demo,
     evaluation,
     health,
     models,
@@ -105,7 +106,7 @@ async def unhandled_handler(request: Request, exc: Exception) -> JSONResponse:
 
 
 app.include_router(health.router)
-for module in (analysis, models, calibration, shift, evaluation, datasets, samples, research):
+for module in (analysis, models, calibration, shift, evaluation, datasets, samples, research, demo):
     app.include_router(module.router, prefix=settings.api_prefix)
 
 
